@@ -1,0 +1,31 @@
+name: pr-policy
+
+# PR 本文のレビュー記録と例外の宣言を読むので、本文の編集でも再実行する。
+# WHY NOT: ci.yml に edited を足して重いジョブを if で飛ばさない。同じ SHA のチェックは最新の結果で置き換わり、
+# スキップは必須チェックの合格として扱われるので、失敗したジョブが本文の編集だけで合格に変わってしまう。
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-policy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+      - name: 基準ブランチを取得する
+        run: git fetch --no-tags origin "$GITHUB_BASE_REF:refs/remotes/origin/$GITHUB_BASE_REF"
+      # 依存は導入しない。本文を編集するたびに走るので軽く保つ。外部パッケージを使わないことは policy.test.mjs が保証する。
+      - name: コミットログと PR を検査する
+        run: make check-pr BASE="origin/$GITHUB_BASE_REF"

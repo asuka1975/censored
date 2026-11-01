@@ -1,0 +1,8 @@
+import: cabal.project
+optimization: False
+flags: +mutation
+
+-- WHY NOT: -Werror を残さない。プラグインとランタイムは計器として差し込むため未使用パッケージ警告が必ず出る。
+-- コード本体の警告は通常ビルド側のゲートで止まる。
+program-options
+  ghc-options: -Wwarn -Wno-unused-packages

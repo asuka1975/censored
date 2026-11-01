@@ -1,0 +1,21 @@
+packages: packages/*/*.cabal
+with-compiler: ghc-9.10.3
+tests: True
+index-state: 2026-11-01T00:00:00Z
+
+-- WHY NOT: 警告方針を各 .cabal の common stanza に書かない。Cabal には stanza をファイル間で共有する手段が
+-- なく、パッケージごとに複製すると緩めた箇所を見落とす。program-options はローカルパッケージにだけ効く。
+program-options
+  ghc-options:
+    -Wall -Wcompat -Werror
+    -Widentities
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-deriving-strategies
+    -Wmissing-export-lists
+    -Wmissing-home-modules
+    -Wpartial-fields
+    -Wredundant-constraints
+    -Wunused-packages
+    -fwrite-ide-info
+    -hiedir=.hie

@@ -1,0 +1,14 @@
+{
+  "config": {
+    "default": true,
+    // 日本語の表と長文を折り返さない。行長の検査は差分の可読性を下げる。
+    "MD013": false,
+    // ADR と規約は同じ小見出しを繰り返す。
+    "MD024": { "siblings_only": true },
+    // front matter の title を h1 とみなさない。
+    "MD025": { "front_matter_title": "" },
+    "MD041": false,
+    // 表の桁揃えは強制しない(全角文字で崩れるため)。
+    "MD060": false
+  }
+}

@@ -1,0 +1,28 @@
+# ツール
+/.tools/
+node_modules/
+.pnpm-store/
+
+# Haskell
+dist-newstyle/
+dist-mutation/
+.hie/
+*.tix
+*.hi
+*.o
+cabal.project.local*
+.ghc.environment.*
+
+# PureScript
+frontend/output/
+frontend/.spago/
+frontend/coverage/
+frontend/reports/
+frontend/.stryker-tmp/
+
+# ローカル
+.env
+.env.*
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md

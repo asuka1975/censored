@@ -1,0 +1,10 @@
+{
+  "testRunner": "command",
+  "commandRunner": { "command": "node tools/run-tests.mjs" },
+  "mutate": ["output/Censored.*/index.js"],
+  "reporters": ["json", "clear-text"],
+  "coverageAnalysis": "off",
+  "ignorePatterns": ["packages", ".spago", "coverage", "reports"],
+  "concurrency": 8,
+  "timeoutMS": 60000
+}

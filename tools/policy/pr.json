@@ -1,0 +1,20 @@
+{
+  "maxChangedLines": 400,
+  "sizeExclude": [
+    "(^|/)pnpm-lock\\.yaml$", "(^|/)spago\\.lock$", "\\.freeze$", "^contract/", "/Generated/", "^docs/"
+  ],
+  "productPaths": [
+    "^backend/packages/", "^backend/migrations/", "^frontend/packages/", "^contract/"
+  ],
+  "protectedPaths": [
+    "^tools/(?!policy/dependencies\\.json$)",
+    "^frontend/tools/", "^frontend/stryker\\.config\\.json$", "^frontend/spago\\.yaml$",
+    "^backend/\\.hlint\\.yaml$", "^backend/fourmolu\\.yaml$", "^backend/weeder\\.toml$",
+    "^backend/cabal\\.project(?!\\.freeze$)",
+    "^\\.github/", "^lefthook\\.yml$", "^\\.lefthookrc$", "^Makefile$",
+    "^package\\.json$", "^pnpm-lock\\.yaml$", "^pnpm-workspace\\.yaml$", "^osv-scanner\\.toml$",
+    "^\\.markdownlint-cli2\\.jsonc$", "^\\.gitattributes$", "^\\.gitignore$",
+    "^\\.claude/", "^AGENTS\\.md$", "^CLAUDE\\.md$", "^docs/conventions/"
+  ],
+  "requiredReviewGates": ["nfr", "test-quality"]
+}

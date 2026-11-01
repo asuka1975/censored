@@ -1,0 +1,28 @@
+# フックは早く失敗させるための便宜で、強制力の本体は CI にある(--no-verify で迂回できるため)。
+# WHY NOT: PATH を前提にしない。Makefile の PATH は、あとで親シェルから実行する git には引き継がれない。
+rc: ./.lefthookrc
+
+pre-commit:
+  parallel: true
+  commands:
+    source-rules:
+      glob: "*.{hs,purs}"
+      run: node tools/gates/check-source.mjs {staged_files}
+    fourmolu:
+      glob: "backend/**/*.hs"
+      run: cd backend && fourmolu --mode check -q $(printf '%s\n' {staged_files} | sed 's#^backend/##')
+    purs-tidy:
+      glob: "frontend/**/*.purs"
+      run: cd frontend && purs-tidy check $(printf '%s\n' {staged_files} | sed 's#^frontend/##')
+    gitleaks:
+      run: gitleaks git --pre-commit --staged --no-banner --redact .
+
+commit-msg:
+  commands:
+    why-required:
+      run: node tools/gates/check-commits.mjs --file {1}
+
+pre-push:
+  commands:
+    check:
+      run: make check

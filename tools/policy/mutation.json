@@ -1,0 +1,10 @@
+{
+  "backend": {
+    "instrument": ["domain", "application"],
+    "fullMinScore": 80
+  },
+  "frontend": {
+    "instrument": ["core"],
+    "fullMinScore": 70
+  }
+}

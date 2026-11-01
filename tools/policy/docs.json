@@ -1,0 +1,5 @@
+{
+  "statuses": ["living", "draft", "deprecated"],
+  "staleAfterDays": 180,
+  "agentsMdMaxLines": 200
+}

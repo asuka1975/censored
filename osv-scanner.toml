@@ -1,0 +1,24 @@
+# 無視は期限と理由を必須にする(DEP-10)。期限が切れると CI が再び失敗し、判断をやり直す。
+
+[[IgnoredVulns]]
+id = "HSEC-2023-0007"
+ignoreUntil = 2027-05-01
+reason = "base の readFloat の DoS。修正版が存在しない。HLint で read を禁止しており、外部入力を readFloat に渡す経路を作らない"
+
+# 以下は開発ツールの推移依存。製品に含まれず、信頼できない入力も処理しない。
+# いずれも修正にメジャー版の更新が必要で、上位ツール(markdownlint-cli2、purescript-installer)の更新を待つ。
+
+[[IgnoredVulns]]
+id = "GHSA-3g3m-2fjr-6pw4"
+ignoreUntil = 2027-02-01
+reason = "glob。purescript-installer と開発ツールの推移依存。自分たちのリポジトリ内のパターンだけを処理する"
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+ignoreUntil = 2027-02-01
+reason = "minimatch。開発ツールの推移依存。自分たちのリポジトリ内のパターンだけを処理する"
+
+[[IgnoredVulns]]
+id = "GHSA-238p-pmpm-9mq7"
+ignoreUntil = 2027-02-01
+reason = "katex。markdownlint-cli2 の推移依存で、リポジトリ内の Markdown だけを処理し描画結果を配信しない"

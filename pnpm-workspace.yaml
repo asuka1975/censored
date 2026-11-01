@@ -1,0 +1,17 @@
+packages: []
+
+# インストールスクリプトは既定で実行しない。必要と確認したものだけを明示する(DEP-9)。
+allowBuilds:
+  purescript: true
+  better-sqlite3: true
+  lefthook: true
+  cpu-features: false
+  ssh2: false
+
+# 公開直後の版を取り込まない(乗っ取られた版は多くが数日で取り下げられる)。単位は分(7 日)。
+minimumReleaseAge: 10080
+
+# 開発ツールの推移依存の脆弱性を同じメジャー版の修正で解消する(osv-scanner の指摘)。
+overrides:
+  qs: 6.16.1
+  re2js: 2.8.7

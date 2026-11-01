@@ -1,0 +1,25 @@
+{
+  "backend": {
+    "root": "backend/packages",
+    "floors": {
+      "domain": 95,
+      "application": 90,
+      "contract": 85,
+      "infra": 70,
+      "server": 60
+    },
+    "ignoreLinePatterns": ["^\\s*deriving\\b"]
+  },
+  "frontend": {
+    "root": "frontend/packages",
+    "floors": {
+      "core": 95,
+      "api-client": 80,
+      "ui": 70,
+      "app": 40
+    },
+    "ignoreLinePatterns": ["^\\s*derive\\b", "^\\s*newtype\\b", "^\\s*data\\b"]
+  },
+  "diffMinPercent": 90,
+  "excludeFiles": ["/Generated/"]
+}

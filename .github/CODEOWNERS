@@ -1,0 +1,31 @@
+# ゲートと判断の記録は人間の承認を必須にする(AI-8)。
+# ブランチ保護で "Require review from Code Owners" を有効にして初めて強制される。
+/tools/                    @asuka1975
+/frontend/tools/           @asuka1975
+/frontend/stryker.config.json @asuka1975
+/frontend/spago.yaml       @asuka1975
+/backend/.hlint.yaml       @asuka1975
+/backend/fourmolu.yaml     @asuka1975
+/backend/weeder.toml       @asuka1975
+/backend/cabal.project*    @asuka1975
+/.github/                  @asuka1975
+/.claude/                  @asuka1975
+/lefthook.yml              @asuka1975
+/.lefthookrc               @asuka1975
+/Makefile                  @asuka1975
+/package.json              @asuka1975
+/pnpm-lock.yaml            @asuka1975
+/pnpm-workspace.yaml       @asuka1975
+/osv-scanner.toml          @asuka1975
+/.markdownlint-cli2.jsonc  @asuka1975
+/.gitattributes            @asuka1975
+/.gitignore                @asuka1975
+/AGENTS.md                 @asuka1975
+/CLAUDE.md                 @asuka1975
+/docs/conventions/         @asuka1975
+/docs/adr/                 @asuka1975
+/docs/nfr/                 @asuka1975
+/LICENSE                   @asuka1975
+
+# 依存の固定ファイルは製品コードと一緒に変わるので、所有者の指定を外す。
+/backend/cabal.project.freeze

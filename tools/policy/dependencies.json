@@ -1,0 +1,33 @@
+{
+  "hackage": {
+    "base": { "purpose": "標準ライブラリ", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "text": { "purpose": "文字列", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "containers": { "purpose": "Map / Set", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "sydtest": { "purpose": "テストフレームワーク", "tier": "test", "license": "Sydtest License(OSI 承認の OSS に限り無償)", "adr": "ADR-0004", "reviewed": "2026-11-02", "planned": true },
+    "sydtest-discover": { "purpose": "テストモジュールの自動発見", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02", "planned": true },
+    "sydtest-hedgehog": { "purpose": "sydtest で hedgehog のプロパティを実行する", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02", "planned": true },
+    "sydtest-mutation-plugin": { "purpose": "ミューテーションの計器", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02", "planned": true },
+    "sydtest-mutation-runtime": { "purpose": "ミューテーションの実行時サポート", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02", "planned": true },
+    "hedgehog": { "purpose": "プロパティテスト", "tier": "test", "reviewed": "2026-11-02", "planned": true }
+  },
+  "purescript": {
+    "prelude": { "purpose": "標準ライブラリ", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "either": { "purpose": "Either", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "maybe": { "purpose": "Maybe", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "strings": { "purpose": "文字列", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "effect": { "purpose": "副作用の型", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "spec": { "purpose": "テストフレームワーク", "tier": "test", "reviewed": "2026-11-02", "planned": true },
+    "spec-node": { "purpose": "spec の Node ランナー", "tier": "test", "reviewed": "2026-11-02", "planned": true },
+    "quickcheck": { "purpose": "プロパティテスト", "tier": "test", "reviewed": "2026-11-02", "planned": true },
+    "spec-quickcheck": { "purpose": "spec で quickcheck を実行する", "tier": "test", "reviewed": "2026-11-02", "planned": true }
+  },
+  "npm": {
+    "@stryker-mutator/core": { "purpose": "PureScript の出力 JS に対するミューテーション", "tier": "tool", "adr": "ADR-0004", "reviewed": "2026-11-02" },
+    "lefthook": { "purpose": "Git フック", "tier": "tool", "reviewed": "2026-11-02" },
+    "markdownlint-cli2": { "purpose": "Markdown の検査", "tier": "tool", "reviewed": "2026-11-02" },
+    "purescript": { "purpose": "PureScript コンパイラ", "tier": "foundation", "adr": "ADR-0003", "reviewed": "2026-11-02" },
+    "purs-tidy": { "purpose": "PureScript の整形", "tier": "tool", "adr": "ADR-0003", "reviewed": "2026-11-02" },
+    "spago": { "purpose": "PureScript のビルド", "tier": "foundation", "adr": "ADR-0003", "reviewed": "2026-11-02" },
+    "yaml": { "purpose": "ゲートで spago.yaml を読む。自作パーサでは通常の YAML 表記で検査を迂回できた", "tier": "tool", "reviewed": "2026-11-02" }
+  }
+}

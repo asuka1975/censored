@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+# 生成物と固定ファイルはレビュー差分から畳む
+pnpm-lock.yaml linguist-generated=true
+frontend/spago.lock linguist-generated=true
+backend/cabal.project.freeze linguist-generated=true
+contract/openapi.json linguist-generated=true
+**/Generated/** linguist-generated=true

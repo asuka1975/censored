@@ -1,0 +1,31 @@
+{
+  "testOnlyPackages": ["^sydtest"],
+  "backend": {
+    "root": "backend/packages",
+    "prefix": "censored-",
+    "layers": {
+      "domain": {
+        "internal": [],
+        "externalAllow": ["base", "text", "containers", "bytestring", "time", "vector", "unordered-containers", "scientific", "uuid-types"]
+      },
+      "application": { "internal": ["domain"] },
+      "contract": { "internal": ["domain"] },
+      "infra": { "internal": ["domain", "application"] },
+      "server": { "internal": ["domain", "application", "contract", "infra"] },
+      "testkit": { "internal": ["domain", "application"] }
+    }
+  },
+  "frontend": {
+    "root": "frontend/packages",
+    "prefix": "censored-",
+    "layers": {
+      "core": {
+        "internal": [],
+        "externalDeny": ["^effect$", "^aff$", "^web-", "^fetch", "^halogen"]
+      },
+      "api-client": { "internal": ["core"] },
+      "ui": { "internal": ["core"] },
+      "app": { "internal": ["core", "api-client", "ui"] }
+    }
+  }
+}

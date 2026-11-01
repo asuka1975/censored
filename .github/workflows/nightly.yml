@@ -1,0 +1,48 @@
+name: nightly
+
+# PR ゲートに載せると遅すぎる検査と、コードが変わらなくても結果が変わる検査。
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutation-full:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: 固定版を読み込む
+        id: versions
+        run: grep -E '^(GHC|CABAL)=' tools/versions.env >> "$GITHUB_OUTPUT"
+      - uses: haskell-actions/setup@0f8e8c99d88aeb3fbfd523f1ef2c6f762d10d64d # v2.12.1
+        with:
+          ghc-version: ${{ steps.versions.outputs.GHC }}
+          cabal-version: ${{ steps.versions.outputs.CABAL }}
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: tools/setup-toolchain.sh
+      - run: make mutation-full
+
+  freshness:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: 文書の鮮度を厳格に検査する
+        run: node tools/gates/check-docs.mjs --strict
+      - name: 検査ツールを取得する
+        run: |
+          source tools/versions.env
+          mkdir -p .tools/bin
+          curl -fsSL -o .tools/bin/osv-scanner "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  .tools/bin/osv-scanner" | sha256sum -c -
+          chmod +x .tools/bin/osv-scanner
+      - name: 新たに公開された脆弱性を検査する
+        run: make vulns

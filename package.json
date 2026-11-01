@@ -1,0 +1,20 @@
+{
+  "name": "censored-monorepo-tools",
+  "author": "asuka1975",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "10.1.1",
+    "lefthook": "2.2.2",
+    "markdownlint-cli2": "0.24.0",
+    "purescript": "0.15.16",
+    "purs-tidy": "0.11.1",
+    "spago": "1.0.5",
+    "yaml": "2.9.1"
+  }
+}

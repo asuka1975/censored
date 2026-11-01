@@ -1,0 +1,31 @@
+# 違反は抑止ではなく修正する。抑止には直上に WHY NOT: が必要(CMT-4)。
+
+- arguments: [-XGHC2021, -XOverloadedStrings, -XDerivingStrategies]
+
+# 部分関数と型安全の抜け穴。実行時クラッシュをコンパイル時に寄せる。
+- functions:
+    - {name: head, within: [], message: "部分関数。NonEmpty かパターンマッチを使う"}
+    - {name: tail, within: [], message: "部分関数。NonEmpty かパターンマッチを使う"}
+    - {name: init, within: [], message: "部分関数"}
+    - {name: last, within: [], message: "部分関数"}
+    - {name: fromJust, within: [], message: "部分関数。Maybe を畳む"}
+    - {name: read, within: [], message: "部分関数かつ HSEC-2023-0007 の対象。readMaybe とパーサを使う"}
+    - {name: error, within: [], message: "例外ではなく型で失敗を返す"}
+    - {name: undefined, within: [], message: "未実装を残さない"}
+    - {name: unsafePerformIO, within: [], message: "純粋性を壊す"}
+    - {name: unsafeCoerce, within: [], message: "型安全を壊す"}
+    - {name: Debug.Trace.trace, within: [], message: "デバッグ出力を残さない"}
+    - {name: Debug.Trace.traceShow, within: [], message: "デバッグ出力を残さない"}
+    - {name: System.IO.putStrLn, within: [], message: "構造化ログを使う(NFR-OBS-1)"}
+    - {name: Prelude.putStrLn, within: [], message: "構造化ログを使う(NFR-OBS-1)"}
+
+- modules:
+    - {name: [Data.List.Partial], within: []}
+    - {name: [Data.Text.IO], within: [], message: "ロケール依存の入出力。UTF-8 を明示する"}
+    - {name: [Debug.Trace], within: [], message: "デバッグ出力を残さない"}
+
+# 言語拡張は .cabal で宣言したものだけを使う。Template Haskell はビルド時間と解析容易性を損なう。
+- extensions:
+    - default: true
+    - {name: [TemplateHaskell, TemplateHaskellQuotes], within: [], message: "ADR なしで TH を導入しない"}
+    - {name: [ImplicitParams, CPP], within: [], message: "ADR なしで導入しない"}

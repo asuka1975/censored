@@ -1,0 +1,36 @@
+{
+  "project": "AGPL-3.0-or-later",
+  "osiApproved": {
+    "AGPL-3.0-or-later": "GNU AFFERO GENERAL PUBLIC LICENSE",
+    "AGPL-3.0-only": "GNU AFFERO GENERAL PUBLIC LICENSE",
+    "GPL-3.0-or-later": "GNU GENERAL PUBLIC LICENSE",
+    "GPL-3.0-only": "GNU GENERAL PUBLIC LICENSE",
+    "MPL-2.0": "Mozilla Public License",
+    "Apache-2.0": "Apache License",
+    "MIT": "Permission is hereby granted, free of charge",
+    "BSD-3-Clause": "Redistribution and use in source and binary forms",
+    "BSD-2-Clause": "Redistribution and use in source and binary forms",
+    "ISC": "Permission to use, copy, modify, and/or distribute this software"
+  },
+  "allow": [
+    "MIT", "MIT-0", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "ISC", "Apache-2.0", "Zlib",
+    "MPL-2.0", "CC0-1.0", "Unlicense", "BlueOak-1.0.0", "Python-2.0", "PSF-2.0", "CC-BY-3.0", "CC-BY-4.0",
+    "LicenseRef-PublicDomain", "PublicDomain"
+  ],
+  "exceptions": [
+    {
+      "package": "^sydtest",
+      "license": "LicenseRef-OtherLicense (Sydtest License)",
+      "condition": "テスト対象が OSI 承認ライセンスの OSS であること。sydtest を改変したら同ライセンスで公開すること",
+      "testOnly": true,
+      "adr": "ADR-0004"
+    },
+    {
+      "package": "^opt-env-conf",
+      "license": "LGPL-3.0-only",
+      "condition": "sydtest の推移依存。テストのバイナリにのみリンクし、配布しない",
+      "testOnly": true,
+      "adr": "ADR-0004"
+    }
+  ]
+}

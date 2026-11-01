@@ -1,0 +1,3 @@
+# フックの実行環境。lefthook がリポジトリのルートで読み込む。
+export PATH="$PWD/.tools/bin:$PWD/node_modules/.bin:$PATH"
+export LANG=C.UTF-8 LC_ALL=C.UTF-8
