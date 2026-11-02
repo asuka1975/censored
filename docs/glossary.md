@@ -26,6 +26,6 @@ last_reviewed: 2026-11-02
 
 | 用語 | 意味 |
 | --- | --- |
-| 書記素 | 見た目の 1 文字。拡張書記素クラスタ(UAX #29)で分割した 1 単位で、国旗の絵文字や結合文字を含む文字も 1 つに数える([ADR-0009](adr/0009-grapheme-counting.md)) |
+| 書記素 | 見た目の 1 文字。拡張書記素クラスタ(UAX #29)で分割した 1 単位で、国旗の絵文字や結合文字を含む文字も 1 つに数える([ADR-0010](adr/0010-grapheme-counting-in-infra.md)) |
 
 トピック、候補、投稿、返信などの用語は、投稿の流れ([asuka1975/censored#2](https://github.com/asuka1975/censored/issues/2))の実装時に定義する。
