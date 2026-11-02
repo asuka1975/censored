@@ -136,12 +136,10 @@ describe('書記素の分割に使う ICU(ADR-0009)', () => {
       assert.notEqual(setup, -1);
       assert.ok(icu !== -1 && icu < setup, `libicu-dev の導入(${icu})がセットアップ(${setup})より前にない`);
       assert.match(steps[icu].run, /pkg-config/);
+      assert.equal(steps[icu].if, undefined, 'ICU の導入を条件で無効にしない');
+      assert.equal(steps[icu]['continue-on-error'], undefined, 'ICU の導入の失敗を無視しない');
     });
   }
-
-  it('make setup が、ICU の確認を通らなければ進まない', () => {
-    assert.match(read('tools/setup-toolchain.sh'), /require-icu\.sh/);
-  });
 });
 
 describe('Git フックの実行環境', () => {

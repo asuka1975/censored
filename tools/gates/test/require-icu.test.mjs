@@ -1,4 +1,4 @@
-// tools/require-icu.sh: ICU の開発ファイルが無いまま進めず、導入方法を示して止まる(ADR-0009)。
+// tools/require-icu.sh と、それを呼ぶ tools/setup-toolchain.sh の ICU の確認(ADR-0009)。
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -8,16 +8,11 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const SCRIPT = path.join(ROOT, 'tools/require-icu.sh');
 
-// 本物の pkg-config の代わりに、`--exists "icu-i18n >= N"` を FAKE_ICU_VERSION と比べるだけの偽物。
+// 本物の pkg-config と同じ契約の偽物: `--modversion icu-i18n` で版を出力し、ICU が無ければ 1 で終わる。
+// 版の比較はしない。比較はスクリプト側の責務なので、その境界をテストで確かめる。
 const FAKE_PKG_CONFIG = `#!/bin/sh
-[ "$1" = "--exists" ] || exit 2
-set -- $2
-[ "$1" = "icu-i18n" ] || exit 1
-[ -n "$FAKE_ICU_VERSION" ] || exit 1
-lowest=$(printf '%s\\n%s\\n' "$3" "$FAKE_ICU_VERSION" | sort -V | head -n 1)
-[ "$lowest" = "$3" ]
+[ "$1" = "--modversion" ] && [ "$2" = "icu-i18n" ] && [ -n "$FAKE_ICU_VERSION" ] && echo "$FAKE_ICU_VERSION"
 `;
 
 const dirs = [];
@@ -25,41 +20,90 @@ after(() => {
   for (const d of dirs) fs.rmSync(d, { recursive: true, force: true });
 });
 
-/** pkg-config が PATH にあるか、ICU がどの版かを指定して実行する。bash は絶対パスで起動するので PATH に左右されない。 */
-function run({ icuVersion, hasPkgConfig = true }) {
-  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'require-icu-'));
-  dirs.push(bin);
+function tempDir(prefix) {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  dirs.push(d);
+  return d;
+}
+
+const systemTool = (name) => ['/usr/bin', '/bin'].map((d) => path.join(d, name)).find((p) => fs.existsSync(p));
+
+/** pkg-config の有無と ICU の版を指定して require-icu.sh を実行する。bash は絶対パスで起動するので PATH に左右されない。 */
+function runRequireIcu({ icuVersion, hasPkgConfig = true }) {
+  const bin = tempDir('require-icu-');
   if (hasPkgConfig) fs.writeFileSync(path.join(bin, 'pkg-config'), FAKE_PKG_CONFIG, { mode: 0o755 });
-  // 偽物が sort と head を使うので、pkg-config がある場合だけ標準の場所も PATH に入れる。
+  // 版の比較に sort と head を使うので、pkg-config がある場合だけ標準の場所も PATH に入れる。
   const PATH = hasPkgConfig ? `${bin}:/usr/bin:/bin` : bin;
   const env = icuVersion ? { PATH, FAKE_ICU_VERSION: icuVersion } : { PATH };
-  return spawnSync('/bin/bash', [SCRIPT], { env, encoding: 'utf8' });
+  return spawnSync('/bin/bash', [path.join(ROOT, 'tools/require-icu.sh')], { env, encoding: 'utf8' });
+}
+
+/**
+ * setup-toolchain.sh を一時ディレクトリへ複製して実行する(実際のリポジトリの .tools には触れない)。
+ * PATH には標準の道具と偽の curl だけを置く。curl が呼ばれたら downloads.log に記録する。
+ */
+function runSetup({ icuVersion }) {
+  const root = tempDir('setup-toolchain-');
+  fs.mkdirSync(path.join(root, 'tools'));
+  for (const f of ['setup-toolchain.sh', 'require-icu.sh', 'versions.env']) {
+    fs.copyFileSync(path.join(ROOT, 'tools', f), path.join(root, 'tools', f));
+  }
+  fs.chmodSync(path.join(root, 'tools/require-icu.sh'), 0o755);
+  const bin = path.join(root, 'bin');
+  fs.mkdirSync(bin);
+  for (const tool of ['bash', 'mktemp', 'dirname', 'mkdir', 'rm', 'sort', 'head']) {
+    fs.symlinkSync(systemTool(tool), path.join(bin, tool));
+  }
+  const downloads = path.join(root, 'downloads.log');
+  fs.writeFileSync(path.join(bin, 'curl'), `#!/bin/sh\necho "$@" >> "${downloads}"\nexit 1\n`, { mode: 0o755 });
+  if (icuVersion) fs.writeFileSync(path.join(bin, 'pkg-config'), FAKE_PKG_CONFIG, { mode: 0o755 });
+  const env = icuVersion ? { PATH: bin, FAKE_ICU_VERSION: icuVersion } : { PATH: bin };
+  const result = spawnSync('/bin/bash', [path.join(root, 'tools/setup-toolchain.sh')], { env, encoding: 'utf8' });
+  return { ...result, downloaded: fs.existsSync(downloads) };
 }
 
 describe('ICU の開発ファイルの確認', () => {
   it('下限ちょうどの ICU 62.1 があるとき成功する', () => {
-    assert.equal(run({ icuVersion: '62.1' }).status, 0);
+    assert.equal(runRequireIcu({ icuVersion: '62.1' }).status, 0);
   });
 
   it('下限を超える ICU 74.2 があるとき成功する', () => {
-    assert.equal(run({ icuVersion: '74.2' }).status, 0);
+    assert.equal(runRequireIcu({ icuVersion: '74.2' }).status, 0);
   });
 
   it('下限に満たない ICU 62.0 のとき失敗する', () => {
-    assert.equal(run({ icuVersion: '62.0' }).status, 1);
+    assert.equal(runRequireIcu({ icuVersion: '62.0' }).status, 1);
   });
 
   it('ICU の開発ファイルが無いとき失敗し、導入するパッケージを示す', () => {
-    const result = run({});
+    const result = runRequireIcu({});
     assert.equal(result.status, 1);
     assert.match(result.stderr, /libicu-dev/);
     assert.match(result.stderr, /pkg-config/);
   });
 
   it('pkg-config が無いとき失敗し、導入するパッケージを示す', () => {
-    const result = run({ icuVersion: '74.2', hasPkgConfig: false });
+    const result = runRequireIcu({ icuVersion: '74.2', hasPkgConfig: false });
     assert.equal(result.status, 1);
     assert.match(result.stderr, /libicu-dev/);
     assert.match(result.stderr, /pkg-config/);
+  });
+});
+
+describe('make setup の ICU の確認', () => {
+  it('ICU の開発ファイルが無いとき終了コード 1 で止まり、何もダウンロードしない', () => {
+    const result = runSetup({});
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /libicu-dev/);
+    assert.doesNotMatch(result.stderr, /GHC \S+ と Cabal \S+ が必要/, 'ICU の確認で止まらず、次の確認に進んでいる');
+    assert.equal(result.downloaded, false);
+  });
+
+  it('ICU の開発ファイルがあるとき ICU の確認では止まらず、次の GHC の確認に進む', () => {
+    const result = runSetup({ icuVersion: '74.2' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /GHC \S+ と Cabal \S+ が必要/);
+    assert.doesNotMatch(result.stderr, /libicu-dev/);
+    assert.equal(result.downloaded, false);
   });
 });
