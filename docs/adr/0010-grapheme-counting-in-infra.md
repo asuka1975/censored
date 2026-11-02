@@ -1,6 +1,6 @@
 # ADR-0010: 書記素の数え方を infra に置き、ICU の IO 版を保持付きで呼ぶ
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-02
 - Deciders: asuka1975
 
