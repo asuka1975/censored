@@ -29,3 +29,5 @@ flowchart LR
 ```
 
 データストア、配信方式、デプロイ構成は未決定。決定したら ADR を書き、ここに反映する。
+
+書記素の分割に使う ICU([ADR-0009](../adr/0009-grapheme-counting.md))は実行環境にも要る。その脆弱性の検知と更新の方針は未決で、[asuka1975/censored#3](https://github.com/asuka1975/censored/issues/3) で決める。
