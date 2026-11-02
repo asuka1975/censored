@@ -63,6 +63,8 @@ jobs:
             ~/.cache/cabal/packages
           key: hs-${{ hashFiles('tools/versions.env', 'backend/cabal.project', 'backend/cabal.project.freeze') }}
           restore-keys: hs-
+      - name: ICU の開発ファイルを導入する
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libicu-dev pkg-config
       - run: tools/setup-toolchain.sh
       - name: 基準ブランチを取得する
         if: github.event_name == 'pull_request'

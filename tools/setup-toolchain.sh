@@ -11,6 +11,8 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$BIN"
 
+"$ROOT/tools/require-icu.sh"
+
 fetch() {
   local url="$1" sha="$2" out="$3"
   curl -fsSL --retry 3 -o "$out" "$url"

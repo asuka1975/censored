@@ -4,7 +4,7 @@ Censored は、バックエンドを Haskell、フロントエンドを PureScri
 
 ## 始め方
 
-前提: x86_64 Linux(glibc 2.34 以上)、[GHCup](https://www.haskell.org/ghcup/)、Node.js 24、pnpm 11。
+前提: x86_64 Linux(glibc 2.34 以上)、[GHCup](https://www.haskell.org/ghcup/)、Node.js 24、pnpm 11、ICU の開発ファイル(Ubuntu なら `libicu-dev` と `pkg-config`。理由は [ADR-0009](docs/adr/0009-grapheme-counting.md))。
 
 ```bash
 make setup   # ツールを .tools/bin に導入し、Git フックを設定する

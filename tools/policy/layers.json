@@ -6,7 +6,7 @@
     "layers": {
       "domain": {
         "internal": [],
-        "externalAllow": ["base", "text", "containers", "bytestring", "time", "vector", "unordered-containers", "scientific", "uuid-types"]
+        "externalAllow": ["base", "text", "containers", "bytestring", "time", "vector", "unordered-containers", "scientific", "uuid-types", "text-icu"]
       },
       "application": { "internal": ["domain"] },
       "contract": { "internal": ["domain"] },

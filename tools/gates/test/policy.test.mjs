@@ -5,6 +5,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
+import { layerViolations } from '../lib/plan.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
@@ -102,6 +103,45 @@ describe('依存の導入なしで動く検査', () => {
       assert.deepEqual(externalImports(path.join(ROOT, 'tools/gates', gate)), []);
     });
   }
+});
+
+describe('書記素の分割に使う ICU(ADR-0009)', () => {
+  const backend = JSON.parse(read('tools/policy/layers.json')).backend;
+  const unit = (id, name, style, component, depends = []) => ({
+    id, 'pkg-name': name, style, 'component-name': component, depends,
+  });
+  const planWith = (...deps) => [
+    unit('base', 'base', 'global', 'lib'),
+    unit('text', 'text', 'global', 'lib'),
+    unit('icu', 'text-icu', 'global', 'lib'),
+    unit('aeson', 'aeson', 'global', 'lib'),
+    unit('dom', 'censored-domain', 'local', 'lib', deps),
+  ];
+
+  it('domain は text-icu に依存できる', () => {
+    assert.deepEqual(layerViolations(planWith('base', 'text', 'icu'), backend), []);
+  });
+
+  it('domain は許可リストにない外部パッケージには依存できない', () => {
+    assert.equal(layerViolations(planWith('base', 'aeson'), backend).length, 1);
+  });
+
+  const stepIndex = (steps, text) => steps.findIndex((s) => typeof s.run === 'string' && s.run.includes(text));
+
+  for (const [file, job] of [['ci.yml', 'backend'], ['nightly.yml', 'mutation-full']]) {
+    it(`${file} の ${job} ジョブは、セットアップの前に ICU の開発ファイルと pkg-config を導入する`, () => {
+      const steps = YAML.parse(read(`.github/workflows/${file}`)).jobs[job].steps;
+      const icu = stepIndex(steps, 'libicu-dev');
+      const setup = stepIndex(steps, 'tools/setup-toolchain.sh');
+      assert.notEqual(setup, -1);
+      assert.ok(icu !== -1 && icu < setup, `libicu-dev の導入(${icu})がセットアップ(${setup})より前にない`);
+      assert.match(steps[icu].run, /pkg-config/);
+    });
+  }
+
+  it('make setup が、ICU の確認を通らなければ進まない', () => {
+    assert.match(read('tools/setup-toolchain.sh'), /require-icu\.sh/);
+  });
 });
 
 describe('Git フックの実行環境', () => {
