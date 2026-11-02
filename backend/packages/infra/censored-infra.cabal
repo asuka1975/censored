@@ -1,5 +1,5 @@
 cabal-version: 3.8
-name: censored-domain
+name: censored-infra
 version: 0.1.0.0
 license: AGPL-3.0-or-later
 copyright: 2026 asuka1975
@@ -20,35 +20,25 @@ library
   import: defaults
   hs-source-dirs: src
   exposed-modules:
-    Censored.Domain.Grapheme
+    Censored.Infra.Grapheme
   build-depends:
     , base
     , text
     , text-icu >=0.8
-  if flag(mutation)
-    build-depends:
-      , sydtest-mutation-plugin
-      , sydtest-mutation-runtime
-    ghc-options:
-      -fplugin=Test.Syd.Mutation.Plugin
-      -plugin-package=sydtest-mutation-plugin
-      -package=sydtest-mutation-plugin
 
-test-suite censored-domain-spec
+test-suite censored-infra-spec
   import: defaults
   type: exitcode-stdio-1.0
   hs-source-dirs: test
   main-is: Spec.hs
   other-modules:
-    Censored.Domain.GraphemeSpec
+    Censored.Infra.GraphemeSpec
   build-tool-depends: sydtest-discover:sydtest-discover
   build-depends:
     , base
-    , censored-domain
+    , censored-infra
     , hedgehog
     , sydtest
     , sydtest-hedgehog
     , text
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
-  if flag(mutation)
-    build-depends: sydtest-mutation-runtime
