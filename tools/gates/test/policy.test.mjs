@@ -136,6 +136,7 @@ describe('書記素の分割に使う ICU(ADR-0009)', () => {
       assert.notEqual(setup, -1);
       assert.ok(icu !== -1 && icu < setup, `libicu-dev の導入(${icu})がセットアップ(${setup})より前にない`);
       assert.match(steps[icu].run, /pkg-config/);
+      assert.match(steps[icu].run, /apt-get update.*apt-get install/, '索引を更新してから導入する');
       assert.equal(steps[icu].if, undefined, 'ICU の導入を条件で無効にしない');
       assert.equal(steps[icu]['continue-on-error'], undefined, 'ICU の導入の失敗を無視しない');
     });

@@ -13,6 +13,9 @@ fail() {
   exit 1
 }
 
-installed="$(pkg-config --modversion icu-i18n 2>/dev/null)" || fail
+# WHY NOT: pkg-config の終了コードで ICU の有無を判定しない。失敗も空の出力も、次の検査でまとめて失敗にする。
+installed="$(pkg-config --modversion icu-i18n 2>/dev/null || true)"
+# WHY NOT: 版として解釈できない出力を合格にしない(GATE-1)。sort -V は数字でない文字列を下限より後ろに並べるので、比較だけでは通ってしまう。
+[[ "${installed}" =~ ^[0-9]+(\.[0-9]+)*$ ]] || fail
 lowest="$(printf '%s\n%s\n' "${MIN_ICU}" "${installed}" | sort -V | head -n 1)"
 [ "${lowest}" = "${MIN_ICU}" ] || fail

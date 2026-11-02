@@ -11,8 +11,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 
 // 本物の pkg-config と同じ契約の偽物: `--modversion icu-i18n` で版を出力し、ICU が無ければ 1 で終わる。
 // 版の比較はしない。比較はスクリプト側の責務なので、その境界をテストで確かめる。
+// FAKE_ICU_VERSION が空文字でも設定されていれば、その空の出力を終了コード 0 で返す(解釈できない出力を表す)。
 const FAKE_PKG_CONFIG = `#!/bin/sh
-[ "$1" = "--modversion" ] && [ "$2" = "icu-i18n" ] && [ -n "$FAKE_ICU_VERSION" ] && echo "$FAKE_ICU_VERSION"
+[ "$1" = "--modversion" ] && [ "$2" = "icu-i18n" ] && [ "\${FAKE_ICU_VERSION+set}" = set ] && echo "$FAKE_ICU_VERSION"
 `;
 
 const dirs = [];
@@ -34,7 +35,7 @@ function runRequireIcu({ icuVersion, hasPkgConfig = true }) {
   if (hasPkgConfig) fs.writeFileSync(path.join(bin, 'pkg-config'), FAKE_PKG_CONFIG, { mode: 0o755 });
   // 版の比較に sort と head を使うので、pkg-config がある場合だけ標準の場所も PATH に入れる。
   const PATH = hasPkgConfig ? `${bin}:/usr/bin:/bin` : bin;
-  const env = icuVersion ? { PATH, FAKE_ICU_VERSION: icuVersion } : { PATH };
+  const env = icuVersion !== undefined ? { PATH, FAKE_ICU_VERSION: icuVersion } : { PATH };
   return spawnSync('/bin/bash', [path.join(ROOT, 'tools/require-icu.sh')], { env, encoding: 'utf8' });
 }
 
@@ -57,7 +58,7 @@ function runSetup({ icuVersion }) {
   const downloads = path.join(root, 'downloads.log');
   fs.writeFileSync(path.join(bin, 'curl'), `#!/bin/sh\necho "$@" >> "${downloads}"\nexit 1\n`, { mode: 0o755 });
   if (icuVersion) fs.writeFileSync(path.join(bin, 'pkg-config'), FAKE_PKG_CONFIG, { mode: 0o755 });
-  const env = icuVersion ? { PATH: bin, FAKE_ICU_VERSION: icuVersion } : { PATH: bin };
+  const env = icuVersion !== undefined ? { PATH: bin, FAKE_ICU_VERSION: icuVersion } : { PATH: bin };
   const result = spawnSync('/bin/bash', [path.join(root, 'tools/setup-toolchain.sh')], { env, encoding: 'utf8' });
   return { ...result, downloaded: fs.existsSync(downloads) };
 }
@@ -74,6 +75,24 @@ describe('ICU の開発ファイルの確認', () => {
   it('下限に満たない ICU 62.0 のとき失敗する', () => {
     assert.equal(runRequireIcu({ icuVersion: '62.0' }).status, 1);
   });
+
+  it('下限より桁数の多い ICU 100.1 があるとき成功する', () => {
+    assert.equal(runRequireIcu({ icuVersion: '100.1' }).status, 0);
+  });
+
+  it('pkg-config が数字でない版を返すとき失敗する', () => {
+    assert.equal(runRequireIcu({ icuVersion: 'abc' }).status, 1);
+  });
+
+  it('pkg-config が終了コード 0 で空の出力を返すとき失敗する', () => {
+    assert.equal(runRequireIcu({ icuVersion: '' }).status, 1);
+  });
+
+  for (const malformed of ['v74.2', '74.2abc', '74..2']) {
+    it(`pkg-config が数字の並びでない版 ${malformed} を返すとき失敗する`, () => {
+      assert.equal(runRequireIcu({ icuVersion: malformed }).status, 1);
+    });
+  }
 
   it('ICU の開発ファイルが無いとき失敗し、導入するパッケージを示す', () => {
     const result = runRequireIcu({});
