@@ -28,6 +28,8 @@ jobs:
           node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: ICU の開発ファイルを導入する
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libicu-dev pkg-config
       - run: tools/setup-toolchain.sh
       - run: make mutation-full
 

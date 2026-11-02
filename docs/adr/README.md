@@ -19,3 +19,4 @@ last_reviewed: 2026-11-02
 | [0006](0006-project-license.md) | プロジェクトのライセンス | Accepted |
 | [0007](0007-api-contract.md) | バックエンドとフロントエンドの API 契約 | Accepted |
 | [0008](0008-review-gate-record.md) | レビューゲートの記録方式 | Accepted |
+| [0009](0009-grapheme-counting.md) | 書記素単位の文字数の数え方 | Accepted |
