@@ -2,7 +2,7 @@ module Censored.Infra.GraphemeSpec (spec) where
 
 import Censored.Infra.Grapheme (graphemeCount, graphemeCountWith)
 import Control.Concurrent (forkIO, yield)
-import Control.Exception (evaluate)
+import Control.Exception (evaluate, finally)
 import Control.Monad (replicateM_, unless, when)
 import Data.IORef (modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Text (Text)
@@ -18,6 +18,16 @@ import Test.Syd.Hedgehog ()
 
 flag :: Text
 flag = "\x1F1EF\x1F1F5"
+
+-- | 前後の部品と結合しない、それ自体で 1 文字に数えられる文字列。
+singleGraphemes :: [Text]
+singleGraphemes =
+  [ "a"
+  , "あ"
+  , flag
+  , "\x1F468\x200D\x1F469\x200D\x1F467"
+  , "e\x0301"
+  ]
 
 -- WHY NOT: GC を強制するだけにしない。解放された領域が書き換わらないと、解放済みのメモリを読んでも
 -- 正しい数が返り、誤りが隠れる。解放された領域を別の値で埋めて、誤りが数の違いとして表れるようにする。
@@ -74,8 +84,7 @@ spec = describe "書記素の数" $ do
             done <- readIORef finished
             unless done $ forceGcAndOverwrite >> yield >> collectUntilFinished
       _ <- forkIO collectUntilFinished
-      count <- evaluate (graphemeCount (T.replicate 1000000 flag))
-      writeIORef finished True
+      count <- evaluate (graphemeCount (T.replicate 1000000 flag)) `finally` writeIORef finished True
       count `shouldBe` 1000000
   specify "英数字だけの文字列は、コードポイントの数と同じ数に数える" $ property $ do
     s <- forAll (Gen.text (Range.linear 0 200) Gen.alphaNum)
@@ -83,3 +92,6 @@ spec = describe "書記素の数" $ do
   specify "国旗 n 個の並びは n 文字と数える" $ property $ do
     n <- forAll (Gen.int (Range.linear 0 50))
     graphemeCount (T.replicate n flag) === n
+  specify "1 文字ずつ数えられる部品を連結した文字列は、部品の数と同じ数に数える" $ property $ do
+    parts <- forAll (Gen.list (Range.linear 0 40) (Gen.element singleGraphemes))
+    graphemeCount (T.concat parts) === length parts
