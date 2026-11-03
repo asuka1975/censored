@@ -7,8 +7,8 @@
     "sydtest": { "purpose": "テストフレームワーク", "tier": "test", "license": "Sydtest License(OSI 承認の OSS に限り無償)", "adr": "ADR-0004", "reviewed": "2026-11-02" },
     "sydtest-discover": { "purpose": "テストモジュールの自動発見", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02" },
     "sydtest-hedgehog": { "purpose": "sydtest で hedgehog のプロパティを実行する", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02" },
-    "sydtest-mutation-plugin": { "purpose": "ミューテーションの計器", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02", "planned": true },
-    "sydtest-mutation-runtime": { "purpose": "ミューテーションの実行時サポート", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02", "planned": true },
+    "sydtest-mutation-plugin": { "purpose": "ミューテーションの計器", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02" },
+    "sydtest-mutation-runtime": { "purpose": "ミューテーションの実行時サポート", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02" },
     "hedgehog": { "purpose": "プロパティテスト", "tier": "test", "reviewed": "2026-11-02" }
   },
   "purescript": {

@@ -32,13 +32,17 @@ test-suite censored-infra-spec
   hs-source-dirs: test
   main-is: Spec.hs
   other-modules:
+    Censored.Infra.GraphemeDomainSpec
     Censored.Infra.GraphemeSpec
   build-tool-depends: sydtest-discover:sydtest-discover
   build-depends:
     , base
+    , censored-domain
     , censored-infra
     , hedgehog
     , sydtest
     , sydtest-hedgehog
     , text
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  if flag(mutation)
+    build-depends: sydtest-mutation-runtime
