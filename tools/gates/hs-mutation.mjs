@@ -5,7 +5,8 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, Report, git, parseArgs, readJson } from './lib/common.mjs';
+import { ROOT, Report, changedLines, git, parseArgs, readJson } from './lib/common.mjs';
+import { uninstrumentedChanges, uninstrumentedNotice } from './lib/instrument-scope.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const mode = args.mode ?? 'diff';
@@ -36,6 +37,10 @@ const layers = fs.existsSync(path.join(backend, 'packages'))
     .filter((d) => fs.existsSync(path.join(backend, 'packages', d, `censored-${d}.cabal`)))
   : [];
 const instrumented = policy.instrument.filter((l) => layers.includes(l));
+if (mode === 'diff') {
+  const outOfScope = uninstrumentedChanges([...changedLines(args.base).keys()], readJson('tools/policy/mutation.json'));
+  if (outOfScope.length > 0) console.log(uninstrumentedNotice(report.name, outOfScope));
+}
 if (instrumented.length === 0) {
   console.log(`${report.name}: 対象パッケージなし`);
   process.exit(0);
