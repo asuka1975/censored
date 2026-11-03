@@ -119,8 +119,8 @@ describe('書記素の分割に使う ICU(ADR-0009)', () => {
     unit('dom', 'censored-domain', 'local', 'lib', deps),
   ];
 
-  it('domain は text-icu に依存できる', () => {
-    assert.deepEqual(layerViolations(planWith('base', 'text', 'icu'), backend), []);
+  it('domain は text-icu に依存できない(ICU は infra に置く。ADR-0010)', () => {
+    assert.equal(layerViolations(planWith('base', 'text', 'icu'), backend).length, 1);
   });
 
   it('domain は許可リストにない外部パッケージには依存できない', () => {
@@ -168,6 +168,25 @@ describe('人間の作者の登録(COM-9)', () => {
     for (const email of humanAuthors) {
       const login = /^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/i.exec(email)?.[1]?.toLowerCase();
       assert.equal(owners.includes(login), true, email);
+    }
+  });
+});
+
+describe('ICU に触れる場所の制限(ADR-0010)', () => {
+  const hlint = YAML.parse(read('backend/.hlint.yaml'));
+  const entries = (key) => hlint.filter((e) => e[key]).flatMap((e) => e[key]);
+  const GRAPHEME = 'Censored.Infra.Grapheme';
+
+  it('ICU のモジュールは、深さに関わらず Censored.Infra.Grapheme の中でだけ読み込める', () => {
+    const covered = (module) => entries('modules').some((e) => e.name.includes(module) && e.within.length === 1 && e.within[0] === GRAPHEME);
+    for (const module of ['Data.Text.ICU', 'Data.Text.ICU.*', 'Data.Text.ICU.*.*']) assert.equal(covered(module), true, module);
+  });
+
+  // 純粋な breaks は遅延リストで反復し、反復中の GC で数が狂う(ADR-0010)。Grapheme の中でも使わない。
+  it('純粋な breaks と breaksRight は、どのモジュールからも使えない', () => {
+    const banned = (name) => entries('functions').some((e) => e.name === name && Array.isArray(e.within) && e.within.length === 0);
+    for (const module of ['Data.Text.ICU', 'Data.Text.ICU.Break']) {
+      for (const fn of ['breaks', 'breaksRight']) assert.equal(banned(`${module}.${fn}`), true, `${module}.${fn}`);
     }
   });
 });
