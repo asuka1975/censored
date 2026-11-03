@@ -18,7 +18,7 @@ for (const file of cabalFiles) {
   const cabal = parseCabal(readText(file));
   for (const problem of cabal.unsupported) report.error('GATE-1', rel(file), null, problem);
   for (const s of cabal.stanzas) {
-    for (const d of [...s.deps, ...s.flagDeps]) if (!INTERNAL.test(d)) note('hackage', d, rel(file));
+    for (const d of [...s.deps, ...s.flagDeps, ...s.toolDeps]) if (!INTERNAL.test(d)) note('hackage', d, rel(file));
   }
 }
 

@@ -227,3 +227,36 @@ describe('spago.yaml の解析', () => {
     assert.equal(parseSpago('package:\n  dependencies:\n    - [effect]\n').unsupported.length, 1);
   });
 });
+
+describe('.cabal の build-tool-depends', () => {
+  const libOf = (text) => parseCabal(`name: censored-domain\n${text}`).stanzas.find((s) => s.kind === 'library' || s.kind === 'test-suite');
+
+  it('実行ファイル名とバージョン制約を除いて、パッケージ名を読む', () => {
+    const stanza = libOf('test-suite t\n  build-tool-depends: sydtest-discover:sydtest-discover ^>=0.0, hspec-discover:hspec-discover\n');
+    assert.deepEqual(stanza.toolDeps, ['sydtest-discover', 'hspec-discover']);
+  });
+
+  it('複数行にわたる宣言を読む', () => {
+    const stanza = libOf('test-suite t\n  build-tool-depends:\n      sydtest-discover:sydtest-discover\n    , alex:alex >=3\n');
+    assert.deepEqual(stanza.toolDeps, ['sydtest-discover', 'alex']);
+  });
+
+  it('build-depends とは別に持つ', () => {
+    const stanza = libOf('test-suite t\n  build-depends: base\n  build-tool-depends: sydtest-discover:sydtest-discover\n');
+    assert.deepEqual([stanza.deps, stanza.toolDeps], [['base'], ['sydtest-discover']]);
+  });
+
+  it('common stanza の宣言を import 先へ展開する', () => {
+    const stanza = libOf('common c\n  build-tool-depends: alex:alex\nlibrary\n  import: c\n');
+    assert.deepEqual(stanza.toolDeps, ['alex']);
+  });
+
+  it('mutation フラグの中の宣言も、本来の宣言として読む', () => {
+    const stanza = libOf('library\n  if flag(mutation)\n    build-tool-depends: alex:alex\n');
+    assert.deepEqual(stanza.toolDeps, ['alex']);
+  });
+
+  it('宣言が無いときは空にする', () => {
+    assert.deepEqual(libOf('library\n  build-depends: base\n').toolDeps, []);
+  });
+});
