@@ -38,7 +38,7 @@ const layers = fs.existsSync(path.join(backend, 'packages'))
   : [];
 const instrumented = policy.instrument.filter((l) => layers.includes(l));
 if (mode === 'diff') {
-  const outOfScope = uninstrumentedChanges([...changedLines(args.base).keys()], readJson('tools/policy/mutation.json'));
+  const outOfScope = uninstrumentedChanges([...changedLines(args.base).keys()], readJson('tools/policy/mutation.json'), 'backend');
   if (outOfScope.length > 0) console.log(uninstrumentedNotice(report.name, outOfScope));
 }
 if (instrumented.length === 0) {
