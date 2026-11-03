@@ -1,6 +1,6 @@
 # ADR-0009: 書記素単位の文字数の数え方
 
-- Status: Accepted
+- Status: Superseded by ADR-0010
 - Date: 2026-11-02
 - Deciders: asuka1975
 
