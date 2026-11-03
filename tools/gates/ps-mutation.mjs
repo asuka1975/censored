@@ -27,7 +27,7 @@ const moduleOf = (file) => /^module\s+([\w.]+)/m.exec(readText(file))?.[1];
 
 const changed = mode === 'diff' ? changedLines(args.base) : null;
 if (changed) {
-  const outOfScope = uninstrumentedChanges([...changed.keys()], readJson('tools/policy/mutation.json'));
+  const outOfScope = uninstrumentedChanges([...changed.keys()], readJson('tools/policy/mutation.json'), 'frontend');
   if (outOfScope.length > 0) console.log(uninstrumentedNotice(report.name, outOfScope));
 }
 const targets = sourceFiles.filter((f) => mode === 'full' || changed.has(f));

@@ -12,17 +12,20 @@ const SOURCE = [
  *
  * @param files 変更されたファイル(リポジトリ相対パス)
  * @param policy tools/policy/mutation.json
+ * @param side 'backend' か 'frontend'。指定すると、その側の変更だけを返す。バックエンドとフロントエンドのゲートが
+ *   同じ通知を重ねて出さないために、各ゲートは自分の側だけを渡す
  * @returns {Array<{side: string, layer: string, files: string[]}>} 側と層の順に並べる
  */
-export function uninstrumentedChanges(files, policy) {
+export function uninstrumentedChanges(files, policy, side) {
   const found = new Map();
   for (const file of files) {
-    for (const { side, pattern } of SOURCE) {
+    for (const { side: fileSide, pattern } of SOURCE) {
+      if (side !== undefined && side !== fileSide) continue;
       const m = pattern.exec(file);
       if (!m || m[2].split('/').includes('Generated')) continue;
-      if (policy[side].instrument.includes(m[1])) continue;
-      const key = `${side}/${m[1]}`;
-      const entry = found.get(key) ?? { side, layer: m[1], files: [] };
+      if (policy[fileSide].instrument.includes(m[1])) continue;
+      const key = `${fileSide}/${m[1]}`;
+      const entry = found.get(key) ?? { side: fileSide, layer: m[1], files: [] };
       entry.files.push(file);
       found.set(key, entry);
     }

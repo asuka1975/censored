@@ -60,6 +60,12 @@ describe('計測対象外の層の変更の集計', () => {
   it('変更が無ければ空を返す', () => {
     assert.deepEqual(uninstrumentedChanges([], policy), []);
   });
+
+  it('側を指定すると、その側の変更だけを返す', () => {
+    const files = ['backend/packages/infra/src/A.hs', 'frontend/packages/ui/src/A.purs'];
+    assert.deepEqual(uninstrumentedChanges(files, policy, 'frontend').map((c) => c.layer), ['ui']);
+    assert.deepEqual(uninstrumentedChanges(files, policy, 'backend').map((c) => c.layer), ['infra']);
+  });
 });
 
 describe('ミューテーションのゲートの通知', () => {
@@ -126,6 +132,24 @@ describe('ミューテーションのゲートの通知', () => {
     assert.equal(r.status, 0);
     assert.match(r.output, /計測対象外の層の変更: frontend\/ui\(1 ファイル\)/);
     assert.match(r.output, /TQ-M10/);
+  });
+
+  it('hs-mutation は、フロントエンドの計測対象外の層の変更を通知しない(ps-mutation と重複させない)', () => {
+    put('backend/packages/infra/src/Grapheme.hs', 'module Grapheme where\n-- changed\n');
+    put('frontend/packages/ui/src/Button.purs', 'module Button where\n-- changed\n');
+    commit();
+    const r = run('hs-mutation.mjs');
+    assert.match(r.output, /backend\/infra/);
+    assert.doesNotMatch(r.output, /frontend\/ui/);
+  });
+
+  it('ps-mutation は、バックエンドの計測対象外の層の変更を通知しない(hs-mutation と重複させない)', () => {
+    put('backend/packages/infra/src/Grapheme.hs', 'module Grapheme where\n-- changed\n');
+    put('frontend/packages/ui/src/Button.purs', 'module Button where\n-- changed\n');
+    commit();
+    const r = run('ps-mutation.mjs');
+    assert.match(r.output, /frontend\/ui/);
+    assert.doesNotMatch(r.output, /backend\/infra/);
   });
 
   it('ps-mutation は、変更が無いときは通知しない', () => {
