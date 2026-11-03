@@ -53,6 +53,15 @@ jobs:
           node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: ICU の開発ファイルを導入する
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libicu-dev pkg-config
+      # WHY NOT: ICU の版をキーに含めずにキャッシュを共有しない。主版が変わると、キャッシュの text-icu が
+      # 古い共有ライブラリを指したまま残り、リンクかテストで落ちる。キャッシュの復元より前に版を読む。
+      - name: ICU の版を読む
+        id: icu
+        run: |
+          version=$(pkg-config --modversion icu-i18n)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
@@ -61,10 +70,8 @@ jobs:
             ~/.cabal/packages
             ~/.local/state/cabal/store
             ~/.cache/cabal/packages
-          key: hs-${{ hashFiles('tools/versions.env', 'backend/cabal.project', 'backend/cabal.project.freeze') }}
-          restore-keys: hs-
-      - name: ICU の開発ファイルを導入する
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libicu-dev pkg-config
+          key: hs-icu${{ steps.icu.outputs.version }}-${{ hashFiles('tools/versions.env', 'backend/cabal.project', 'backend/cabal.project.freeze') }}
+          restore-keys: hs-icu${{ steps.icu.outputs.version }}-
       - run: tools/setup-toolchain.sh
       - name: 基準ブランチを取得する
         if: github.event_name == 'pull_request'

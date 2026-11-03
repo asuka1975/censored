@@ -144,6 +144,32 @@ describe('書記素の分割に使う ICU(ADR-0009)', () => {
   }
 });
 
+describe('ビルドのキャッシュと ICU の版', () => {
+  const steps = () => YAML.parse(read('.github/workflows/ci.yml')).jobs.backend.steps;
+  const cacheStep = () => steps().find((s) => typeof s.uses === 'string' && s.uses.startsWith('actions/cache@'));
+
+  // ICU の主版が変わると、キャッシュにある text-icu が古い共有ライブラリを指したまま残り、リンクかテストで落ちる。
+  it('ci.yml の backend ジョブは、ICU を導入してからキャッシュを復元する', () => {
+    const list = steps();
+    const icu = list.findIndex((s) => typeof s.run === 'string' && s.run.includes('libicu-dev'));
+    const cache = list.findIndex((s) => typeof s.uses === 'string' && s.uses.startsWith('actions/cache@'));
+    assert.ok(icu !== -1 && cache !== -1 && icu < cache, `ICU の導入(${icu})がキャッシュ(${cache})より前にない`);
+  });
+
+  it('ci.yml の backend ジョブは、pkg-config で読んだ ICU の版をキャッシュのキーと復元の候補に含める', () => {
+    const version = steps().find((s) => s.id === 'icu');
+    assert.match(version.run, /pkg-config --modversion icu-i18n/);
+    const { key, 'restore-keys': restore } = cacheStep().with;
+    assert.match(key, /steps\.icu\.outputs\.version/);
+    assert.match(restore, /steps\.icu\.outputs\.version/);
+  });
+
+  it('ci.yml の backend ジョブは、ICU の版を読めなければ失敗する(空の版でキャッシュを共有しない)', () => {
+    const run = steps().find((s) => s.id === 'icu').run;
+    assert.match(run, /^version=\$\(pkg-config --modversion icu-i18n\)$/m, '代入で読む。echo の中のコマンド置換では失敗が伝わらない');
+  });
+});
+
 describe('Git フックの実行環境', () => {
   it('フックがツールの導入先を PATH に入れる', () => {
     // sh の `.` はスラッシュのないパスを PATH から探すので、相対パスを明示しないと読み込みに失敗する。
