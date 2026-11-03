@@ -2,8 +2,11 @@
 module Censored.Domain.Candidates
   ( Candidates
   , CandidatesError (..)
+  , Choice (..)
   , mkCandidates
+  , mkChoice
   , candidateList
+  , candidateAt
   )
 where
 
@@ -29,6 +32,26 @@ mkCandidates count texts = case texts of
   _ -> Left (WrongCandidateCount (length texts))
   where
     validate position = first (InvalidCandidate position) . mkPostBody count
+
+-- | 組の中の、選べる候補の位置。組に無い位置は作れない。
+data Choice
+  = FirstCandidate
+  | SecondCandidate
+  | ThirdCandidate
+  deriving stock (Eq, Show)
+
+-- | 0 始まりの位置から選択を作る。0、1、2 以外は組に無い候補なので Nothing にする。
+mkChoice :: Int -> Maybe Choice
+mkChoice 0 = Just FirstCandidate
+mkChoice 1 = Just SecondCandidate
+mkChoice 2 = Just ThirdCandidate
+mkChoice _ = Nothing
+
+candidateAt :: Choice -> Candidates -> PostBody
+candidateAt choice (Candidates a b c) = case choice of
+  FirstCandidate -> a
+  SecondCandidate -> b
+  ThirdCandidate -> c
 
 candidateList :: Candidates -> [PostBody]
 candidateList (Candidates a b c) = [a, b, c]

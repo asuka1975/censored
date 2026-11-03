@@ -45,6 +45,18 @@ spec = describe "候補の組" $ do
   it "個数が合わないときは、どの候補の数え方の関数も評価せずに拒否する" $
     fmap candidateList (mkCandidates neverCount ["一", "二", "三", "四"])
       `shouldBe` Left (WrongCandidateCount 4)
+  describe "候補の選択" $ do
+    it "位置 0、1、2 を、1 番目、2 番目、3 番目の候補の選択として受理する" $
+      map mkChoice [0, 1, 2] `shouldBe` [Just FirstCandidate, Just SecondCandidate, Just ThirdCandidate]
+    it "位置 -1 と 3 は、組に無い候補なので受理しない" $
+      map mkChoice [-1, 3] `shouldBe` [Nothing, Nothing]
+    it "とても大きい位置も受理しない" $
+      mkChoice maxBound `shouldBe` Nothing
+    it "選んだ位置の候補を取り出す" $
+      fmap
+        (\cs -> map (postBodyText . (`candidateAt` cs)) [FirstCandidate, SecondCandidate, ThirdCandidate])
+        (mkCandidates T.length ["一", "二", "三"])
+        `shouldBe` Right ["一", "二", "三"]
   specify "3 つ以外の個数は、中身に関わらず拒否される" $ property $ do
     n <- forAll (Gen.filter (/= 3) (Gen.int (Range.linear 0 10)))
     candidatesOf (replicate n "あ") === Left (WrongCandidateCount n)
