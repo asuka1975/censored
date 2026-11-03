@@ -2,7 +2,7 @@
 title: コミット
 owner: asuka1975
 status: living
-last_reviewed: 2026-11-02
+last_reviewed: 2026-11-03
 ---
 
 # コミット
@@ -73,8 +73,25 @@ scope は小文字の kebab-case。層の名前(`domain`、`ui`、`contract`)か
 | COM-6 | `fixup!` / `squash!` は手元では使ってよいが、マージ前に畳む | `check-commits`(PR 範囲) |
 | COM-7 | main へは rebase マージのみ。履歴を直線に保ち、整理されたコミットをそのまま残す | ブランチ保護 |
 | COM-8 | AI が書いたコミットには `Co-Authored-By` を付ける | レビュー |
+| COM-9 | 人間が ADR の Status 行だけを書き換えたコミットは、COM-1〜COM-5 の対象外にする(次の節) | `check-commits` |
 
 実際のマージコミットは検査の対象外とする。判定は件名ではなく Git の状態で行う(フックでは `MERGE_HEAD`、PR の範囲では親の数)。
+
+## 人間による ADR の承認のコミット(COM-9)
+
+Proposed を Accepted にするだけのコミットに、書くべき理由は無い。決定は ADR の本文にあり、承認したという事実がコミットの中身そのものだからである。GitHub の画面で承認してもよいように、次のすべてを満たすコミットは COM-1〜COM-5 を検査しない。
+
+- 作者のメールアドレスが [tools/policy/commits.json](../../tools/policy/commits.json) の `humanAuthors` にある
+- メッセージに `Co-Authored-By:` と `Claude-Session:` が無い
+- 変更が `docs/adr/NNNN-*.md` の Status 行と、`docs/adr/README.md` の索引の状態の列だけで、新しい状態が `Accepted` または `Superseded by ADR-NNNN` である
+
+条件を満たすかを解釈できないとき(ファイルの追加や削除、読めない内容、登録の欠落)は免除せず、通常の検査に戻る。
+
+- Rejected と Deprecated への変更は対象にしない。却下や廃止の理由を書く場所が、コミットログの Why だけだからである
+- `fixup!` は免除しない(COM-6)
+- 判定の根拠は作者であり、コミッターではない。AI が書いたコミットも、人間のアカウントでコミットされる
+- 作者は偽れる。「Accepted にするのは人間だけ」の強制は [ADR-9](10-adr.md) の CODEOWNERS が担い、ここで外すのは Why の検査だけである
+- コミット時のフックは、HEAD との差分で判定する。`git commit --amend` では直前のコミットの変更を含めずに判定するので、CI の範囲検査が最終の判定になる
 
 ## なぜ squash マージにしないか
 
