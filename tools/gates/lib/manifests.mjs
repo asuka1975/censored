@@ -11,6 +11,10 @@ function addField(stanza, field, value, inFlag) {
     const names = value.replace(/:\{[^}]*\}/g, '').split(',').map((s) => s.trim()).filter(Boolean)
       .map((s) => /^([A-Za-z0-9-]+)/.exec(s)?.[1]).filter(Boolean);
     (inFlag ? stanza.flagDeps : stanza.deps).push(...names);
+  } else if (field === 'build-tool-depends') {
+    // WHY NOT: mutation フラグの中でも分けない。ビルド時に実行されるツールなので、計器の例外を認めない。
+    const names = value.split(',').map((s) => s.trim()).filter(Boolean).map((s) => /^([A-Za-z0-9-]+)/.exec(s)?.[1]).filter(Boolean);
+    stanza.toolDeps.push(...names);
   } else if (field === 'ghc-options' || field === 'ghc-prof-options' || field === 'ghc-shared-options') {
     const opts = value.split(/\s+/).filter(Boolean);
     (inFlag ? stanza.flagGhcOptions : stanza.ghcOptions).push(...opts);
@@ -32,6 +36,7 @@ function resolveImports(result) {
     }
     target.deps.push(...common.deps);
     target.flagDeps.push(...common.flagDeps);
+    target.toolDeps.push(...common.toolDeps);
     target.ghcOptions.push(...common.ghcOptions);
     target.flagGhcOptions.push(...common.flagGhcOptions);
     for (const next of common.imports) merge(target, next, seen);
@@ -47,7 +52,8 @@ function resolveImports(result) {
  * インデントの入れ子で読む。条件節は両方の分岐を依存に含める(どの条件でも層の規則を守らせるため)。
  * `if flag(mutation)` の中だけは計器なので分けて返す。
  * @returns {{name:string|null, flags:string[], unsupported:string[],
- *   stanzas:Array<{kind:string, name:string, imports:string[], deps:string[], flagDeps:string[], ghcOptions:string[], flagGhcOptions:string[]}>}}
+ *   stanzas:Array<{kind:string, name:string, imports:string[], deps:string[], flagDeps:string[], toolDeps:string[], ghcOptions:string[], flagGhcOptions:string[]}>}}
+ *   toolDeps は build-tool-depends のパッケージ名(`pkg:exe` の pkg)
  */
 export function parseCabal(text) {
   const result = { name: null, stanzas: [], flags: [], unsupported: [] };
@@ -77,7 +83,7 @@ export function parseCabal(text) {
       else if (st) {
         stanza = {
           kind: st[1].toLowerCase(), name: st[2] ?? '', imports: [],
-          deps: [], flagDeps: [], ghcOptions: [], flagGhcOptions: [],
+          deps: [], flagDeps: [], toolDeps: [], ghcOptions: [], flagGhcOptions: [],
         };
         result.stanzas.push(stanza);
       } else if (!OTHER_TOP_LEVEL.test(trimmed) && !/^[A-Za-z][A-Za-z0-9-]*\s*:/.test(trimmed)) {

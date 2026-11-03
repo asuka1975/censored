@@ -37,20 +37,22 @@ for (const layer of dirs(policy.backend.root)) {
   for (const s of cabal.stanzas) {
     if (s.kind === 'common') continue;
     if (PRODUCT_STANZAS.has(s.kind)) {
-      const internal = s.deps.filter((d) => d.startsWith(HS_PREFIX)).map((d) => d.slice(HS_PREFIX.length));
+      // build-tool-depends も依存として数える。ビルド時にしか動かないが、層の外のツールを持ち込む抜け道になる。
+      const deps = [...s.deps, ...s.toolDeps];
+      const internal = deps.filter((d) => d.startsWith(HS_PREFIX)).map((d) => d.slice(HS_PREFIX.length));
       for (const dep of internal) {
         if (dep !== layer && !rule.internal.includes(dep)) {
           report.error('DIR-3', file, null, `${layer} は ${dep} に依存できない(許可: ${rule.internal.join(', ') || 'なし'})`);
         }
       }
       if (rule.externalAllow) {
-        for (const dep of s.deps.filter((d) => !d.startsWith(HS_PREFIX))) {
+        for (const dep of deps.filter((d) => !d.startsWith(HS_PREFIX))) {
           if (!rule.externalAllow.includes(dep)) {
             report.error('DIR-3', file, null, `${layer} の ${s.kind} は外部パッケージ ${dep} に依存できない(tools/policy/layers.json)`);
           }
         }
       }
-      for (const dep of s.deps) {
+      for (const dep of deps) {
         if (policy.testOnlyPackages.some((p) => new RegExp(p).test(dep))) {
           report.error('DEP-7', file, null, `${dep} はテスト専用ライセンスの条件があるので ${s.kind} から使わない`);
         }
