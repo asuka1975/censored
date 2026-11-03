@@ -4,7 +4,7 @@
     "text": { "purpose": "文字列", "tier": "standard", "reviewed": "2026-11-02" },
     "text-icu": { "purpose": "書記素の分割(拡張書記素クラスタ)。ICU のシステムライブラリを要する", "tier": "standard", "adr": "ADR-0010", "reviewed": "2026-11-02" },
     "uuid-types": { "purpose": "識別子(UUID)の型。domain は採番せず、型だけを使う", "tier": "standard", "reviewed": "2026-11-03" },
-    "containers": { "purpose": "Map / Set", "tier": "standard", "reviewed": "2026-11-02", "planned": true },
+    "containers": { "purpose": "Map / Set", "tier": "standard", "reviewed": "2026-11-02" },
     "sydtest": { "purpose": "テストフレームワーク", "tier": "test", "license": "Sydtest License(OSI 承認の OSS に限り無償)", "adr": "ADR-0004", "reviewed": "2026-11-02" },
     "sydtest-discover": { "purpose": "テストモジュールの自動発見", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02" },
     "sydtest-hedgehog": { "purpose": "sydtest で hedgehog のプロパティを実行する", "tier": "test", "adr": "ADR-0004", "reviewed": "2026-11-02" },
