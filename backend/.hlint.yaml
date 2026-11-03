@@ -18,11 +18,18 @@
     - {name: Debug.Trace.traceShow, within: [], message: "デバッグ出力を残さない"}
     - {name: System.IO.putStrLn, within: [], message: "構造化ログを使う(NFR-OBS-1)"}
     - {name: Prelude.putStrLn, within: [], message: "構造化ログを使う(NFR-OBS-1)"}
+    # 純粋な breaks は遅延リストで反復し、反復中の GC で数が狂う。IO 版の breakCharacter と next を使う(ADR-0010)。
+    - {name: Data.Text.ICU.breaks, within: [], message: "純粋な breaks は GC で数が狂う。Censored.Infra.Grapheme の graphemeCount を使う(ADR-0010)"}
+    - {name: Data.Text.ICU.breaksRight, within: [], message: "純粋な breaksRight は GC で数が狂う。Censored.Infra.Grapheme の graphemeCount を使う(ADR-0010)"}
+    - {name: Data.Text.ICU.Break.breaks, within: [], message: "純粋な breaks は GC で数が狂う。Censored.Infra.Grapheme の graphemeCount を使う(ADR-0010)"}
+    - {name: Data.Text.ICU.Break.breaksRight, within: [], message: "純粋な breaksRight は GC で数が狂う。Censored.Infra.Grapheme の graphemeCount を使う(ADR-0010)"}
 
 - modules:
     - {name: [Data.List.Partial], within: []}
     - {name: [Data.Text.IO], within: [], message: "ロケール依存の入出力。UTF-8 を明示する"}
     - {name: [Debug.Trace], within: [], message: "デバッグ出力を残さない"}
+    # ICU に触れるのは 1 モジュールだけ。他の層に ICU が広がると、GC との相互作用の検証が要る場所が増える。
+    - {name: [Data.Text.ICU, Data.Text.ICU.*, Data.Text.ICU.*.*], within: [Censored.Infra.Grapheme], message: "ICU に触れるのは Censored.Infra.Grapheme だけ(ADR-0010)"}
 
 # 言語拡張は .cabal で宣言したものだけを使う。Template Haskell はビルド時間と解析容易性を損なう。
 - extensions:
