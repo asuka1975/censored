@@ -21,3 +21,4 @@ last_reviewed: 2026-11-02
 | [0008](0008-review-gate-record.md) | レビューゲートの記録方式 | Accepted |
 | [0009](0009-grapheme-counting.md) | 書記素単位の文字数の数え方 | Superseded by ADR-0010 |
 | [0010](0010-grapheme-counting-in-infra.md) | 書記素の数え方を infra に置き、ICU の IO 版を保持付きで呼ぶ | Accepted |
+| [0011](0011-application-ports.md) | application の Port を IO の関数のレコードにし、候補の組の更新を 1 つの原子的な操作にする | Proposed |
