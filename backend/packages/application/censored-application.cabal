@@ -1,0 +1,60 @@
+cabal-version: 3.8
+name: censored-application
+version: 0.1.0.0
+license: AGPL-3.0-or-later
+copyright: 2026 asuka1975
+build-type: Simple
+
+-- ミューテーション計測用。通常のビルドでは無効(TQ-M8)。
+flag mutation
+  default: False
+  manual: True
+
+common defaults
+  default-language: GHC2021
+  default-extensions:
+    DerivingStrategies
+    OverloadedStrings
+
+library
+  import: defaults
+  hs-source-dirs: src
+  exposed-modules:
+    Censored.Application.Env
+    Censored.Application.GenerateCandidates
+    Censored.Application.Port
+  build-depends:
+    , base
+    , censored-domain
+    , text
+  if flag(mutation)
+    build-depends:
+      , sydtest-mutation-plugin
+      , sydtest-mutation-runtime
+    ghc-options:
+      -fplugin=Test.Syd.Mutation.Plugin
+      -plugin-package=sydtest-mutation-plugin
+      -package=sydtest-mutation-plugin
+
+test-suite censored-application-spec
+  import: defaults
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Spec.hs
+  other-modules:
+    Censored.Application.GenerateCandidatesSpec
+    Censored.Application.TestFakes
+  build-tool-depends: sydtest-discover:sydtest-discover
+  build-depends:
+    , base
+    , censored-application
+    , censored-domain
+    , containers
+    , hedgehog
+    , sydtest
+    , sydtest-hedgehog
+    , text
+    , uuid-types
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  if flag(mutation)
+    build-depends: sydtest-mutation-runtime
