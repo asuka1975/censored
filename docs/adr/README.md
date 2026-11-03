@@ -21,3 +21,4 @@ last_reviewed: 2026-11-02
 | [0008](0008-review-gate-record.md) | レビューゲートの記録方式 | Accepted |
 | [0009](0009-grapheme-counting.md) | 書記素単位の文字数の数え方 | Superseded by ADR-0010 |
 | [0010](0010-grapheme-counting-in-infra.md) | 書記素の数え方を infra に置き、ICU の IO 版を保持付きで呼ぶ | Accepted |
+| [0011](0011-idempotent-post-creation.md) | 投稿の作成の冪等性を、作者と要求の識別子の一意制約で実現する | Proposed |
