@@ -1,8 +1,10 @@
 module Censored.Infra.GraphemeSpec (spec) where
 
 import Censored.Infra.Grapheme (graphemeCount, graphemeCountWith)
-import Control.Monad (when)
-import Data.IORef (modifyIORef', newIORef, readIORef)
+import Control.Concurrent (forkIO, yield)
+import Control.Exception (evaluate)
+import Control.Monad (replicateM_, unless, when)
+import Data.IORef (modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Foreign.ForeignPtr (mallocForeignPtrBytes, withForeignPtr)
@@ -19,14 +21,18 @@ flag = "\x1F1EF\x1F1F5"
 
 -- WHY NOT: GC を強制するだけにしない。解放された領域が書き換わらないと、解放済みのメモリを読んでも
 -- 正しい数が返り、誤りが隠れる。解放された領域を別の値で埋めて、誤りが数の違いとして表れるようにする。
-forceGcEvery1000 :: Int -> IO ()
-forceGcEvery1000 count = when (count `mod` 1000 == 0) $ do
+forceGcAndOverwrite :: IO ()
+forceGcAndOverwrite = do
   performMajorGC
-  buffer <- mallocForeignPtrBytes churnBytes
-  withForeignPtr buffer (\pointer -> fillBytes pointer 0xFF churnBytes)
+  replicateM_ 4 $ do
+    buffer <- mallocForeignPtrBytes churnBytes
+    withForeignPtr buffer (\pointer -> fillBytes pointer 0xFF churnBytes)
 
 churnBytes :: Int
 churnBytes = 2 * 1024 * 1024
+
+forceGcEvery1000 :: Int -> IO ()
+forceGcEvery1000 count = when (count `mod` 1000 == 0) forceGcAndOverwrite
 
 spec :: Spec
 spec = describe "書記素の数" $ do
@@ -44,21 +50,33 @@ spec = describe "書記素の数" $ do
     graphemeCount "\x1F468\x200D\x1F469\x200D\x1F467\x200D\x1F466" `shouldBe` 1
   it "e と結合アクセント記号 U+0301 の組を 1 文字と数える" $
     graphemeCount "e\x0301" `shouldBe` 1
-  it "大きな入力(a を 300,000 個)でも、GC に左右されずに 300,000 文字と数える" $
-    graphemeCount (T.replicate 300000 "a") `shouldBe` 300000
-  it "大きな入力(国旗を 300,000 個)でも、GC に左右されずに 300,000 文字と数える" $
-    graphemeCount (T.replicate 300000 flag) `shouldBe` 300000
+  it "種類の違う書記素が並んだ文字列(a、国旗、e と U+0301)を 3 文字と数える" $
+    graphemeCount ("a" <> flag <> "e\x0301") `shouldBe` 3
   it "境界を数えるたびに、それまでに数えた個数を渡して IO を実行する" $ do
     calls <- newIORef []
     count <- graphemeCountWith (\n -> modifyIORef' calls (n :)) "abc"
     recorded <- readIORef calls
     (count, reverse recorded) `shouldBe` (3, [0, 1, 2])
-  it "反復中に GC が走っても、a を 300,000 個並べた文字列を 300,000 文字と数える" $ do
-    count <- graphemeCountWith forceGcEvery1000 (T.replicate 300000 "a")
-    count `shouldBe` 300000
-  it "反復中に GC が走っても、国旗を 300,000 個並べた文字列を 300,000 文字と数える" $ do
-    count <- graphemeCountWith forceGcEvery1000 (T.replicate 300000 flag)
-    count `shouldBe` 300000
+  withoutRetries $ do
+    it "大きな入力(a を 300,000 個)でも、GC に左右されずに 300,000 文字と数える" $
+      graphemeCount (T.replicate 300000 "a") `shouldBe` 300000
+    it "大きな入力(国旗を 300,000 個)でも、GC に左右されずに 300,000 文字と数える" $
+      graphemeCount (T.replicate 300000 flag) `shouldBe` 300000
+    it "反復中に GC が走っても、a を 300,000 個並べた文字列を 300,000 文字と数える" $ do
+      count <- graphemeCountWith forceGcEvery1000 (T.replicate 300000 "a")
+      count `shouldBe` 300000
+    it "反復中に GC が走っても、国旗を 300,000 個並べた文字列を 300,000 文字と数える" $ do
+      count <- graphemeCountWith forceGcEvery1000 (T.replicate 300000 flag)
+      count `shouldBe` 300000
+    it "別のスレッドが GC を繰り返しても、国旗を 1,000,000 個並べた文字列を 1,000,000 文字と数える" $ do
+      finished <- newIORef False
+      let collectUntilFinished = do
+            done <- readIORef finished
+            unless done $ forceGcAndOverwrite >> yield >> collectUntilFinished
+      _ <- forkIO collectUntilFinished
+      count <- evaluate (graphemeCount (T.replicate 1000000 flag))
+      writeIORef finished True
+      count `shouldBe` 1000000
   specify "英数字だけの文字列は、コードポイントの数と同じ数に数える" $ property $ do
     s <- forAll (Gen.text (Range.linear 0 200) Gen.alphaNum)
     graphemeCount s === T.length s

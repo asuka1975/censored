@@ -9,7 +9,7 @@ where
 
 import Data.Text (Text)
 import Data.Text.ICU (LocaleName (Root))
-import Data.Text.ICU.Break (BreakIterator, breakCharacter, first, next)
+import Data.Text.ICU.Break (BreakIterator, breakCharacter, next)
 import GHC.Exts (keepAlive#)
 import GHC.IO (IO (IO), unsafePerformIO)
 
@@ -25,9 +25,7 @@ graphemeCount = unsafePerformIO . graphemeCountWith (\_ -> pure ())
 graphemeCountWith :: (Int -> IO ()) -> Text -> IO Int
 graphemeCountWith afterBoundary text = do
   iterator <- breakCharacter Root text
-  keepAlive iterator $ do
-    _ <- first iterator
-    countBoundaries afterBoundary iterator 0
+  keepAlive iterator (countBoundaries afterBoundary iterator 0)
 
 countBoundaries :: (Int -> IO ()) -> BreakIterator () -> Int -> IO Int
 countBoundaries afterBoundary iterator !count = do
