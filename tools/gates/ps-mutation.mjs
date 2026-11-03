@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ROOT, Report, changedLines, parseArgs, readJson, readText, rel, walk } from './lib/common.mjs';
+import { uninstrumentedChanges, uninstrumentedNotice } from './lib/instrument-scope.mjs';
 import { classifyMutants } from './lib/mutants.mjs';
 
 const args = parseArgs(process.argv.slice(2));
@@ -25,6 +26,10 @@ const sourceFiles = policy.instrument
 const moduleOf = (file) => /^module\s+([\w.]+)/m.exec(readText(file))?.[1];
 
 const changed = mode === 'diff' ? changedLines(args.base) : null;
+if (changed) {
+  const outOfScope = uninstrumentedChanges([...changed.keys()], readJson('tools/policy/mutation.json'));
+  if (outOfScope.length > 0) console.log(uninstrumentedNotice(report.name, outOfScope));
+}
 const targets = sourceFiles.filter((f) => mode === 'full' || changed.has(f));
 if (targets.length === 0) {
   console.log(`${report.name}: 対象なし`);
