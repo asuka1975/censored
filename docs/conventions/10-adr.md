@@ -2,7 +2,7 @@
 title: ADR 管理
 owner: asuka1975
 status: living
-last_reviewed: 2026-11-02
+last_reviewed: 2026-11-03
 ---
 
 # ADR 管理
@@ -58,7 +58,7 @@ Proposed ──承認──→ Accepted ──→ Superseded by ADR-NNNN
 | ADR-6 | コードから参照する ADR は実在し、置き換えられていない | `check-adr` |
 | ADR-7 | Accepted の本文は変更も削除もしない。変更できるのは Status 行のみ。考えが変わったら新しい ADR を書く。基準版と番号で対応づけるので、改名しても検査される | `check-adr --base` |
 | ADR-8 | ADR が必要な変更は、実装 PR の前か同じ PR で ADR を出す | レビュー |
-| ADR-9 | **Accepted にするのは人間だけ。** AI は Proposed までを起草する | CODEOWNERS |
+| ADR-9 | **Accepted にするのは人間だけ。** AI は Proposed までを起草する。人間が Status 行だけを書き換えるコミットは、Why を要らない([COM-9](08-commits.md)) | CODEOWNERS |
 
 ## 書き方
 

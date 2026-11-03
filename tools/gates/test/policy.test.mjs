@@ -30,7 +30,8 @@ function ownersOf(file) {
 
 // 検査の実行内容、ツールの取得、インストールの許可、AI への指示を変更できるファイル。
 const GATE_CONTROL = [
-  'tools/gates/check-pr.mjs', 'tools/policy/coverage.json', 'tools/policy/layers.json', 'tools/policy/licenses.json',
+  'tools/gates/check-pr.mjs', 'tools/gates/check-commits.mjs', 'tools/gates/lib/adr-status.mjs',
+  'tools/policy/commits.json', 'tools/policy/coverage.json', 'tools/policy/layers.json', 'tools/policy/licenses.json',
   'tools/setup-toolchain.sh', 'tools/versions.env', 'frontend/tools/run-tests.mjs', 'frontend/stryker.config.json',
   'frontend/spago.yaml', 'backend/.hlint.yaml', 'backend/fourmolu.yaml', 'backend/weeder.toml',
   'backend/cabal.project', 'backend/cabal.project.mutation', 'backend/cabal.project.local',
@@ -148,5 +149,25 @@ describe('Git フックの実行環境', () => {
     // sh の `.` はスラッシュのないパスを PATH から探すので、相対パスを明示しないと読み込みに失敗する。
     assert.equal(YAML.parse(read('lefthook.yml')).rc, './.lefthookrc');
     assert.match(read('.lefthookrc'), /\.tools\/bin/);
+  });
+});
+
+describe('人間の作者の登録(COM-9)', () => {
+  const { humanAuthors } = JSON.parse(read('tools/policy/commits.json'));
+
+  it('1 人以上の人間のメールアドレスを登録している', () => {
+    assert.equal(Array.isArray(humanAuthors) && humanAuthors.length > 0, true);
+  });
+
+  it('このリポジトリで AI が使う作者を人間として登録していない', () => {
+    for (const email of humanAuthors) assert.doesNotMatch(email, /anthropic\.com$/i);
+  });
+
+  it('CODEOWNERS の所有者の GitHub アカウントのメールアドレスだけを登録している', () => {
+    const owners = ownersOf('docs/adr/0001-x.md').map((o) => o.replace(/^@/, '').toLowerCase());
+    for (const email of humanAuthors) {
+      const login = /^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/i.exec(email)?.[1]?.toLowerCase();
+      assert.equal(owners.includes(login), true, email);
+    }
   });
 });
