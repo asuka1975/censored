@@ -20,13 +20,10 @@ library
   import: defaults
   hs-source-dirs: src
   exposed-modules:
-    Censored.Domain.CandidateSet
-    Censored.Domain.Candidates
     Censored.Domain.Id
     Censored.Domain.Length
     Censored.Domain.Post
     Censored.Domain.PostBody
-    Censored.Domain.Topic
     Censored.Domain.Whitespace
   build-depends:
     , base
@@ -47,13 +44,9 @@ test-suite censored-domain-spec
   hs-source-dirs: test
   main-is: Spec.hs
   other-modules:
-    Censored.Domain.CandidateSetSpec
-    Censored.Domain.CandidatesSpec
     Censored.Domain.LengthSpec
     Censored.Domain.PostBodySpec
     Censored.Domain.TestCounters
-    Censored.Domain.TestFixtures
-    Censored.Domain.TopicSpec
     Censored.Domain.WhitespaceSpec
   build-tool-depends: sydtest-discover:sydtest-discover
   build-depends:
@@ -63,7 +56,6 @@ test-suite censored-domain-spec
     , sydtest
     , sydtest-hedgehog
     , text
-    , uuid-types
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   if flag(mutation)
     build-depends: sydtest-mutation-runtime
