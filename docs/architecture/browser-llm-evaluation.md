@@ -13,19 +13,22 @@ last_reviewed: 2026-11-04
 
 ## 評価する構成
 
-| # | ランタイム | モデル(量子化) | 経路 | 役割 |
+| # | ランタイム | モデル(量子化) | 経路 | 備考 |
 | --- | --- | --- | --- | --- |
-| 1 | transformers.js | Qwen3-0.6B(ONNX、q4) | WebGPU、WASM | 候補 |
-| 2 | transformers.js | Qwen3-1.7B(ONNX、q4) | WebGPU、WASM | 候補 |
-| 3 | wllama | Qwen3-0.6B(GGUF、Q4_K_M) | WebGPU、WASM | 候補 |
-| 4 | wllama | Qwen3-1.7B(GGUF、Q4_K_M) | WebGPU、WASM | 候補 |
-| 5 | WebLLM | gemma-2-2b-jpn-it(`q4f16_1`) | WebGPU のみ | 品質の上限の目安。基盤としては採らない |
+| 1 | transformers.js | Qwen3-0.6B(ONNX、q4) | WebGPU、WASM | 小さいモデルの基準 |
+| 2 | transformers.js | Qwen3-1.7B(ONNX、q4) | WebGPU、WASM | |
+| 3 | transformers.js | LFM3-1.7B(ONNX、q4) | WebGPU、WASM | #2 と同じ大きさの比較 |
+| 4 | wllama | Qwen3-0.6B(GGUF、Q4_K_M) | WebGPU、WASM | |
+| 5 | wllama | Qwen3-1.7B(GGUF、Q4_K_M) | WebGPU、WASM | |
+| 6 | wllama | LFM3-1.7B(GGUF、Q4_K_M) | WebGPU、WASM | llama.cpp と wllama が LFM3 に対応するか未確認。GGUF が無い、または動かなければ、動かなかったと記録して省く |
 
 モデルの選び方:
 
+- 比べるモデルは Qwen3 と LFM3(人間の指示、2026-11-04)。Gemma は外した。
 - Qwen3 は、公式の README が Apache 2.0 と書く。小型版(0.6B、1.7B)を使う。
-- `gemma-2-2b-jpn-it` は、日本語に調整されたモデルで、WebLLM の事前用意の一覧にある。ライセンスは確かめられていない(Gemma の利用条件を、人間が確認する)。
+- LFM3 は、Liquid の公式リポジトリ(cookbook)に `LFM3-1.7B` が出てくる。transformers.js の対応モデルに載る。ライセンスの条件と日本語への対応は、確かめていない。**使う前に、人間が確認する。**
 - ONNX と GGUF の配布の有無と、実際の大きさは、確かめていない。見つからないモデルは、別の同程度のモデルに替えて、記録する。
+- WebLLM は、WebGPU でしか動かないので、基盤の候補にも、計測の対象にも含めない。
 
 ## トピックの集合
 
@@ -124,6 +127,9 @@ last_reviewed: 2026-11-04
 | 4 | WebGPU | | | | | | | | | | | |
 | 4 | WASM | | | | | | | | | | | |
 | 5 | WebGPU | | | | | | | | | | | |
+| 5 | WASM | | | | | | | | | | | |
+| 6 | WebGPU | | | | | | | | | | | |
+| 6 | WASM | | | | | | | | | | | |
 
 出力そのもの(14 件 × 構成)は、結果の表とは別に、このリポジトリの外か、Issue のコメントに貼る。
 
@@ -131,5 +137,5 @@ last_reviewed: 2026-11-04
 
 - モデルの重みを取得できない(`huggingface.co`、`cdn-lfs.huggingface.co`、`cdn.jsdelivr.net` が 403)。上の計測のすべてが、これに依存する。
 - GPU が無く、WebGPU の計測ができない。
-- Gemma と Qwen2.5 のライセンスを、一次情報で確認できない。
+- LFM3 のライセンスの条件と日本語への対応、llama.cpp と wllama の LFM3 への対応を、一次情報で確認できない。
 - MediaPipe の LLM Inference の文書(`ai.google.dev`)に到達できない。

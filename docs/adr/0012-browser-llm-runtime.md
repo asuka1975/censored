@@ -11,19 +11,20 @@
 2026-11-04 に、到達できた一次情報で確かめたこと:
 
 - **ブラウザの対応状況**(caniuse のデータ、2026-10-29 更新)。WebGPU は世界の利用の 85.8%(部分対応を除く。ほかに 3.66% が部分対応)。Chrome と Edge は 113 以降、iOS の Safari は 26.0 以降、Samsung Internet は 24 以降が対応する。Firefox は部分対応で、caniuse の注記は「初期設定で有効なのは、Windows と、Apple Silicon の macOS 26 以降だけ」。デスクトップの Safari も部分対応で、macOS 26 以降でだけ初期設定で有効。WebAssembly は 97.24%、WebAssembly SIMD は 96.53%、スレッドは 96.99%、SharedArrayBuffer は 96.94%。SharedArrayBuffer は、COOP と COEP のヘッダーによる cross-origin isolation を要する。これらは世界の集計で、日本の利用者に限った値ではない。
-- **WebLLM**(`@mlc-ai/web-llm` 0.2.87、Apache-2.0)。README は「WebGPU で加速される」と書く。WebGPU を使わない実行経路の記述は無い。`wasm` と書かれているのは、モデルごとのコンパイル済みライブラリ(`model_lib`)のこと。事前に用意されたモデルに、日本語に調整された `gemma-2-2b-jpn-it`(`q4f16_1` で VRAM 約 1,895 MB)、`Qwen3-0.6B`(同 約 1,403 MB)、`Qwen3-1.7B`(同 約 2,037 MB)、`Qwen2.5-0.5B`(同 約 945 MB)、`Qwen2.5-1.5B`(同 約 1,630 MB)がある(`src/config.ts`、2026-11-04 時点)。
+- **WebLLM**(`@mlc-ai/web-llm` 0.2.87、Apache-2.0)。README は「WebGPU で加速される」と書く。WebGPU を使わない実行経路の記述は無い。`wasm` と書かれているのは、モデルごとのコンパイル済みライブラリ(`model_lib`)のこと。事前に用意されたモデルは 165 件ある(`src/config.ts`、2026-11-04 時点)。
 - **transformers.js**(`@huggingface/transformers` 4.3.2、Apache-2.0)。README は、ブラウザでの既定は WASM による CPU 実行で、`device: 'webgpu'` で GPU に切り替えられると書く。WebGPU は「多くのブラウザでまだ実験的」とも書く。既定で、モデルは Hugging Face Hub から、WASM のバイナリは CDN(jsDelivr)から取る。どちらも設定で自分のサーバーに置ける。依存の `onnxruntime-web` を、開発版(`1.31.0-dev.20260914-8d85527a0`)に固定している。
 - **wllama**(`@wllama/wllama` 3.8.1、MIT)。llama.cpp の WebAssembly 版。GPU が無くても WASM の SIMD で動く。v3 から WebGPU にも対応した。マルチスレッドには COOP と COEP のヘッダーが要り、無いときは単一スレッド版に自動で切り替わる。モデルは GGUF 形式で、Q4、Q5、Q6 の量子化を勧めている。
 - **MediaPipe の LLM Inference**(`@mediapipe/tasks-genai` 0.10.30、Apache-2.0)。公式の文書(`ai.google.dev`)に到達できず、対応する経路とモデルを確かめられなかった。
-- **モデルのライセンス**。Qwen3 の公式リポジトリの README は「すべてのオープンウェイトのモデルは Apache 2.0」と書く。Gemma は、到達できる一次情報に書かれておらず、確かめられなかった。
+- **LFM3**(Liquid AI)。Liquid の公式リポジトリ `Liquid4All/cookbook` の README に、テキストの `LFM3-1.7B`、`LFM3-VL-2B`、`LFM3-Audio-2B`、`LFM3-Omni-2B` が出てくる。テキストの大きさは、`LFM3-1.7B` しか見つかっていない。transformers.js の README の対応モデルの一覧に、`LFM3` と `LFM3-VL` が載る。同じ cookbook は、LFM2 系のモデルをブラウザの WebGPU と ONNX Runtime Web で動かすデモを載せ、コミュニティの例として、LFM2.5-1.2B の日本語版を transformers.js と WebGPU で動かすものを挙げる。llama.cpp の README の対応モデルの一覧に LFM は無く、wllama で LFM3 が動くかは確かめられなかった。日本語への公式の対応と、ライセンスの条件は、到達できる一次情報に無く、確かめられなかった。
+- **Qwen3 のライセンス**。公式リポジトリの README は「すべてのオープンウェイトのモデルは Apache 2.0」と書く。
 
-**検証していないこと:** モデルの重みの置き場である Hugging Face(`huggingface.co`、`cdn-lfs.huggingface.co`)と `cdn.jsdelivr.net` へは、この環境のネットワーク方針が接続を拒否する(403)。GPU も無い。そのため、次を確かめていない。モデルの大きさ、初回の読み込み時間、生成の速さ、メモリの使用量、日本語の質、ONNX と GGUF の形式の配布の有無、Gemma と Qwen2.5 のライセンス。実際のブラウザでの WebGPU の動作も確かめていない。計測の手順は [評価の手順](../architecture/browser-llm-evaluation.md) に書いた。
+**検証していないこと:** モデルの重みの置き場である Hugging Face(`huggingface.co`、`cdn-lfs.huggingface.co`)と `cdn.jsdelivr.net` へは、この環境のネットワーク方針が接続を拒否する(403)。GPU も無い。そのため、次を確かめていない。モデルの大きさ、初回の読み込み時間、生成の速さ、メモリの使用量、日本語の質、ONNX と GGUF の形式の配布の有無、LFM3 のライセンスと日本語への対応。実際のブラウザでの WebGPU の動作も確かめていない。計測の手順は [評価の手順](../architecture/browser-llm-evaluation.md) に書いた。
 
 ## 決定
 
 実行基盤は、WebGPU と WASM を 1 つのライブラリで扱える **transformers.js か wllama のどちらか**にする。WebGPU でしか動かない WebLLM は、基盤としては採らない。どちらにするかと、モデルは、[評価の手順](../architecture/browser-llm-evaluation.md) の計測の結果で決める。結果が出たら、この ADR の決定を更新してから、人間が承認する。
 
-計測では、WebLLM と日本語に調整された `gemma-2-2b-jpn-it` を、品質の上限の目安として 1 構成だけ測る。基盤としては採らない。
+比べるモデルは、Qwen3 と LFM3 にする(人間の指示、2026-11-04)。Gemma は評価から外す。一次情報でライセンスを確かめられず、評価でも WebLLM と組み合わせた品質の目安にしか使っていなかったため。LFM3 は、ライセンスと日本語への対応を、使う前に人間が確認する。
 
 MediaPipe は、確かめられなかったので、いまは候補に含めない。確かめられたら、評価に加える。
 
@@ -36,7 +37,7 @@ MediaPipe は、確かめられなかったので、いまは候補に含めな�
 
 ### 案 B: WebGPU は WebLLM、WASM は wllama と、経路ごとに別のライブラリを使う
 
-利点: WebLLM は、日本語に調整されたモデルを含む、事前に用意されたモデルの一覧を持つ。WebGPU の経路の質を、最も高くできる可能性がある。
+利点: WebLLM は、事前に用意されたモデルの一覧を持つ。WebGPU の経路の質を、最も高くできる可能性がある。
 欠点: 2 つのライブラリ、2 つのモデルの形式(MLC と GGUF)、2 つの経路のテストとプロンプトの調整を持つ。WebGPU の経路と WASM の経路で、候補の質と文体が変わる。
 **却下理由:** 構成が倍になる費用に対して、質の差が見合うかは、計測していない。案 A の計測で、WebGPU の質の差が大きいと分かったら、再検討する。
 
@@ -57,6 +58,7 @@ MediaPipe は、確かめられなかったので、いまは候補に含めな�
 ## 再検討の条件
 
 - 計測の結果、transformers.js と wllama のどちらも、日本語の質か速度の基準を満たさないとき。そのときは、案 B(経路ごとに別のライブラリ)か、別のモデルを検討する。
+- LFM3 のライセンスの条件が、このプロジェクトの利用(AGPL-3.0 のサービスでの配信)を許さないと分かったとき。そのときは、LFM3 を外し、別のモデルを評価に加える。
 - 選んだライブラリが、6 か月以上リリースされないとき。
 - WebGPU を使えない環境の割合が、日本の利用者で大きく違うと分かったとき(世界の集計の値を使っている)。
 - MediaPipe の LLM Inference が、WebGPU と WASM の両方に対応すると確かめられたとき。
