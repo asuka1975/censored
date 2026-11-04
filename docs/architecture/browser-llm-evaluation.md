@@ -87,6 +87,16 @@ last_reviewed: 2026-11-04
 - **Qwen3 の思考。** Qwen3 の構成は、利用者の発言の末尾に `/no_think` を付けて思考を止める。LFM3 には付けない。それでも `<think>` が出たときは取り除いて判定し、`hadThinking` に記録する。
 - **スマートフォン。** Android の Chrome なら、USB デバッグで `adb reverse tcp:8080 tcp:8080` をして `http://localhost:8080` を開く(localhost は安全なコンテキストなので WebGPU が使える。この手順は未確認)。iPhone で使える手軽な方法は用意していない。
 
+### 道具のテストと削除
+
+道具は、計測が終わったら削除する使い捨てである。**CI には組み込まない**(`make check` にも `make test-gates` にも入れていない)。判定や集計の誤りは「有効な出力」の数字を歪めるので、道具を変えたときは手元で実行する。
+
+```bash
+node --test tools/llm-bench/test/*.test.mjs
+```
+
+計測の結果を ADR-0012 に反映したら、`tools/llm-bench/` を削除する。
+
 ### 結果を返す
 
 - 構成と経路ごとに「要約をコピー」した JSON を、そのまま貼る(1〜2 KB)。端末の説明(CPU、GPU、メモリ、OS、回線の速さ)を一言添える。
