@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Censored LLM 計測</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 72rem; margin: 1rem auto; padding: 0 1rem; line-height: 1.5; }
+  pre, textarea { width: 100%; box-sizing: border-box; overflow: auto; font-size: 0.85rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  th, td { border: 1px solid #8884; padding: 0.25rem 0.5rem; vertical-align: top; text-align: left; }
+  td.num input { width: 3.2rem; }
+  .bad { color: #c0392b; }
+  .good { color: #1e8449; }
+  button { font-size: 1rem; padding: 0.4rem 1rem; margin-right: 0.5rem; }
+</style>
+</head>
+<body>
+<h1>Censored LLM 計測</h1>
+<p>手順は docs/architecture/browser-llm-evaluation.md。これは計測の道具で、製品の画面ではない。</p>
+<section id="config"></section>
+<p>
+  <button id="start" disabled>計測を始める</button>
+  <button id="stop" disabled>止める(今の生成のあと)</button>
+</p>
+<p id="status" role="status"></p>
+<progress id="progress" max="1" value="0" hidden></progress>
+<h2>出力と採点(任意。1〜5 の整数)</h2>
+<table id="runs">
+  <thead><tr><th>#</th><th>トピック</th><th>候補</th><th>判定</th><th>秒</th><th>穏当さ</th><th>意味</th><th>自然さ</th><th>違い</th></tr></thead>
+  <tbody></tbody>
+</table>
+<h2>結果</h2>
+<p>
+  <label>タスクマネージャーのタブのメモリ(MB): <input id="manual-memory" type="number" min="0" step="1"></label>
+  <label>メモ(端末、回線、気づいたこと): <input id="note" type="text" size="40"></label>
+</p>
+<p>
+  <button id="download" disabled>全体を JSON で保存</button>
+  <button id="copy" disabled>要約をコピー</button>
+</p>
+<textarea id="summary" rows="14" readonly></textarea>
+<script type="module" src="./bench.mjs"></script>
+</body>
+</html>

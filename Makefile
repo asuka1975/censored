@@ -53,8 +53,8 @@ lint-repo: require-base test-gates ## リポジトリ規約(コメント・層�
 	$(GATES)/check-docs.mjs
 	$(GATES)/check-deps.mjs
 
-test-gates: ## ゲート自身のテストを実行する
-	node --test 'tools/gates/test/*.test.mjs'
+test-gates: ## ゲートと LLM 計測ハーネスのテストを実行する
+	node --test 'tools/gates/test/*.test.mjs' 'tools/llm-bench/test/*.test.mjs'
 
 lint-hs: ## Haskell の整形と HLint を検査する
 ifneq ($(HS_PKGS),)
