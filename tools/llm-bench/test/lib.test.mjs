@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  extractJsonArray, graphemeCount, leakedTerms, median, parseConfig, stripThinking, summarizeRuns, trailingFailures, validateOutput,
+  extractJsonArray, firstFailure, graphemeCount, leakedTerms, median, parseConfig, stripThinking, summarizeRuns, trailingFailures, validateOutput,
 } from '../lib.mjs';
 
 const IDS = [1, 2, 3];
@@ -98,6 +98,13 @@ test('失敗の連続: 末尾で連続している例外の失敗だけを数え
   assert.equal(trailingFailures([ok, f, f]), 2);
   assert.equal(trailingFailures([f, f, ok, f]), 1);
   assert.equal(trailingFailures([ok, ok]), 0);
+});
+
+test('最初の失敗: 例外で失敗した最初の実行の本文を返し、無ければ null、長いものは切る', () => {
+  assert.equal(firstFailure([]), null);
+  assert.equal(firstFailure([{ failed: false, raw: 'a' }]), null);
+  assert.equal(firstFailure([{ raw: 'ok' }, { failed: true, raw: 'first' }, { failed: true, raw: 'second' }]), 'first');
+  assert.equal(firstFailure([{ failed: true, raw: 'abcdef' }], 3), 'abc');
 });
 
 test('構成: 複数の誤りはすべて報告する', () => {

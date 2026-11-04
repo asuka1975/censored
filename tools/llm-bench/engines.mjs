@@ -60,6 +60,9 @@ async function createWllama(config, onProgress) {
   return {
     info: () => ({
       library: 'wllama 3.8.1',
+      libllama: mod.Wllama.getLibllamaVersion(),
+      // モデル自身のチャットテンプレート。生成が落ちたとき、原因の手がかりにする。
+      chatTemplate: wllama.isModelLoaded() ? (wllama.getChatTemplate() ?? '').slice(0, 4000) : null,
       webgpuSupported: wllama.isSupportWebGPU(),
       multithread: wllama.isModelLoaded() ? wllama.isMultithread() : null,
       threads: wllama.isModelLoaded() ? wllama.getNumThreads() : null,

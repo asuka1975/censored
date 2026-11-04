@@ -1,6 +1,6 @@
 // 計測ページの制御。純粋な判定は lib.mjs に置き、ここは DOM とブラウザ API だけを扱う。
 import { createEngine } from './engines.mjs';
-import { leakedTerms, MAX_CONSECUTIVE_FAILURES, parseConfig, RATING_AXES, summarizeRuns, trailingFailures, validateOutput } from './lib.mjs';
+import { firstFailure, leakedTerms, MAX_CONSECUTIVE_FAILURES, parseConfig, RATING_AXES, summarizeRuns, trailingFailures, validateOutput } from './lib.mjs';
 import { buildMessages, TOPICS } from './topics.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -46,6 +46,9 @@ async function memorySnapshot() {
   if (performance.memory) out.jsHeapUsedBytes = performance.memory.usedJSHeapSize;
   return out;
 }
+
+// WHY NOT: stack だけを残さない。wasm の abort は message が空で、stack だけでは何が起きたか読めなかった。
+const describeError = (e) => `${[e?.name, e?.message].filter(Boolean).join(': ')}\n${e?.stack ?? String(e)}`.trim();
 
 const storageUsage = async () => (navigator.storage?.estimate ? (await navigator.storage.estimate()).usage ?? null : null);
 
@@ -132,7 +135,7 @@ async function runBench(config) {
         const verdict = validateOutput(out.text);
         run = { ...base, raw: out.text, ...verdict, leaked: leakedTerms(verdict.candidates), ttftMs: out.ttftMs, totalMs: out.totalMs, tokens: out.tokens, truncated: out.truncated, ratings: {} };
       } catch (e) {
-        run = { ...base, raw: String(e?.stack ?? e), valid: false, reasons: ['生成が例外で失敗'], failed: true, candidates: [], leaked: [], ttftMs: null, totalMs: null, tokens: 0, truncated: false, hadThinking: false, duplicates: false, ratings: {} };
+        run = { ...base, raw: describeError(e), valid: false, reasons: ['生成が例外で失敗'], failed: true, candidates: [], leaked: [], ttftMs: null, totalMs: null, tokens: 0, truncated: false, hadThinking: false, duplicates: false, ratings: {} };
       }
       runs.push(run);
       addRow(runs.length - 1, entry, run);
@@ -157,7 +160,7 @@ async function runBench(config) {
 
 // 要約は、採点の入力のたびに作り直す(貼り付ける値が最新になる)。
 function currentResult() {
-  return { ...result, manualMemoryMB: $('manual-memory').value === '' ? null : Number($('manual-memory').value), note: $('note').value, summary: summarizeRuns(runs) };
+  return { ...result, manualMemoryMB: $('manual-memory').value === '' ? null : Number($('manual-memory').value), note: $('note').value, summary: summarizeRuns(runs), firstFailure: firstFailure(runs) };
 }
 
 function refreshSummary() {

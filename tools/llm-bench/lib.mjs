@@ -189,6 +189,12 @@ export function trailingFailures(runs) {
   return n;
 }
 
+/** 最初に例外で失敗した実行の本文。要約には出力を入れないので、失敗の原因だけは別に残す。 */
+export function firstFailure(runs, limit = 1500) {
+  const failed = runs.find((r) => r.failed === true);
+  return failed === undefined ? null : failed.raw.slice(0, limit);
+}
+
 export const RATING_AXES = ['moderation', 'meaning', 'naturalness', 'variety'];
 
 /** runs: { topicId, valid, ttftMs, totalMs, tokens, truncated, leaked, ratings? } の配列(実行した順)。 */
