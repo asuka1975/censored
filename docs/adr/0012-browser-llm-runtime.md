@@ -15,16 +15,16 @@
 - **transformers.js**(`@huggingface/transformers` 4.3.2、Apache-2.0)。README は、ブラウザでの既定は WASM による CPU 実行で、`device: 'webgpu'` で GPU に切り替えられると書く。WebGPU は「多くのブラウザでまだ実験的」とも書く。既定で、モデルは Hugging Face Hub から、WASM のバイナリは CDN(jsDelivr)から取る。どちらも設定で自分のサーバーに置ける。依存の `onnxruntime-web` を、開発版(`1.31.0-dev.20260914-8d85527a0`)に固定している。
 - **wllama**(`@wllama/wllama` 3.8.1、MIT)。llama.cpp の WebAssembly 版。GPU が無くても WASM の SIMD で動く。v3 から WebGPU にも対応した。マルチスレッドには COOP と COEP のヘッダーが要り、無いときは単一スレッド版に自動で切り替わる。モデルは GGUF 形式で、Q4、Q5、Q6 の量子化を勧めている。
 - **MediaPipe の LLM Inference**(`@mediapipe/tasks-genai` 0.10.30、Apache-2.0)。公式の文書(`ai.google.dev`)に到達できず、対応する経路とモデルを確かめられなかった。
-- **LFM3**(Liquid AI)。Liquid の公式リポジトリ `Liquid4All/cookbook` の README に、テキストの `LFM3-1.7B`、`LFM3-VL-2B`、`LFM3-Audio-2B`、`LFM3-Omni-2B` が出てくる。テキストの大きさは、`LFM3-1.7B` しか見つかっていない。transformers.js の README の対応モデルの一覧に、`LFM3` と `LFM3-VL` が載る。同じ cookbook は、LFM2 系のモデルをブラウザの WebGPU と ONNX Runtime Web で動かすデモを載せ、コミュニティの例として、LFM2.5-1.2B の日本語版を transformers.js と WebGPU で動かすものを挙げる。llama.cpp の README の対応モデルの一覧に LFM は無く、wllama で LFM3 が動くかは確かめられなかった。日本語への公式の対応と、ライセンスの条件は、到達できる一次情報に無く、確かめられなかった。
+- **LFM3**(Liquid AI)。Liquid の公式リポジトリ `Liquid4All/cookbook` の README に、テキストの `LFM3-1.7B`、`LFM3-VL-2B`、`LFM3-Audio-2B`、`LFM3-Omni-2B` が出てくる。テキストの大きさは、`LFM3-1.7B` しか見つかっていない。transformers.js の README の対応モデルの一覧に、`LFM3` と `LFM3-VL` が載る。同じ cookbook は、LFM2 系のモデルをブラウザの WebGPU と ONNX Runtime Web で動かすデモを載せ、コミュニティの例として、LFM2.5-1.2B の日本語版を transformers.js と WebGPU で動かすものを挙げる。llama.cpp の README の対応モデルの一覧に LFM は無く、wllama で LFM3 が動くかは確かめられなかった。`LFM3-1.7B` が日本語に対応することは、人間が確認した(2026-11-04)。ライセンスの条件は、到達できる一次情報に無く、確かめられなかった。
 - **Qwen3 のライセンス**。公式リポジトリの README は「すべてのオープンウェイトのモデルは Apache 2.0」と書く。
 
-**検証していないこと:** モデルの重みの置き場である Hugging Face(`huggingface.co`、`cdn-lfs.huggingface.co`)と `cdn.jsdelivr.net` へは、この環境のネットワーク方針が接続を拒否する(403)。GPU も無い。そのため、次を確かめていない。モデルの大きさ、初回の読み込み時間、生成の速さ、メモリの使用量、日本語の質、ONNX と GGUF の形式の配布の有無、LFM3 のライセンスと日本語への対応。実際のブラウザでの WebGPU の動作も確かめていない。計測の手順は [評価の手順](../architecture/browser-llm-evaluation.md) に書いた。
+**検証していないこと:** モデルの重みの置き場である Hugging Face(`huggingface.co`、`cdn-lfs.huggingface.co`)と `cdn.jsdelivr.net` へは、この環境のネットワーク方針が接続を拒否する(403)。GPU も無い。そのため、次を確かめていない。モデルの大きさ、初回の読み込み時間、生成の速さ、メモリの使用量、日本語の質、ONNX と GGUF の形式の配布の有無、LFM3 のライセンスの条件。実際のブラウザでの WebGPU の動作も確かめていない。計測の手順は [評価の手順](../architecture/browser-llm-evaluation.md) に書いた。
 
 ## 決定
 
 実行基盤は、WebGPU と WASM を 1 つのライブラリで扱える **transformers.js か wllama のどちらか**にする。WebGPU でしか動かない WebLLM は、基盤としては採らない。どちらにするかと、モデルは、[評価の手順](../architecture/browser-llm-evaluation.md) の計測の結果で決める。結果が出たら、この ADR の決定を更新してから、人間が承認する。
 
-比べるモデルは、Qwen3 と LFM3 にする(人間の指示、2026-11-04)。Gemma は評価から外す。一次情報でライセンスを確かめられず、評価でも WebLLM と組み合わせた品質の目安にしか使っていなかったため。LFM3 は、ライセンスと日本語への対応を、使う前に人間が確認する。
+比べるモデルは、Qwen3 と LFM3 にする(人間の指示、2026-11-04)。Gemma は評価から外す。一次情報でライセンスを確かめられず、評価でも WebLLM と組み合わせた品質の目安にしか使っていなかったため。LFM3 は、ライセンスの条件を、使う前に人間が確認する。
 
 MediaPipe は、確かめられなかったので、いまは候補に含めない。確かめられたら、評価に加える。
 

@@ -26,7 +26,7 @@ last_reviewed: 2026-11-04
 
 - 比べるモデルは Qwen3 と LFM3(人間の指示、2026-11-04)。Gemma は外した。
 - Qwen3 は、公式の README が Apache 2.0 と書く。小型版(0.6B、1.7B)を使う。
-- LFM3 は、Liquid の公式リポジトリ(cookbook)に `LFM3-1.7B` が出てくる。transformers.js の対応モデルに載る。ライセンスの条件と日本語への対応は、確かめていない。**使う前に、人間が確認する。**
+- LFM3 は、Liquid の公式リポジトリ(cookbook)に `LFM3-1.7B` が出てくる。transformers.js の対応モデルに載る。`LFM3-1.7B` が日本語に対応することは、人間が確認した(2026-11-04)。ライセンスの条件は、確かめていない。**使う前に、人間が確認する。**
 - ONNX と GGUF の配布の有無と、実際の大きさは、確かめていない。見つからないモデルは、別の同程度のモデルに替えて、記録する。
 - WebLLM は、WebGPU でしか動かないので、基盤の候補にも、計測の対象にも含めない。
 
@@ -137,5 +137,5 @@ last_reviewed: 2026-11-04
 
 - モデルの重みを取得できない(`huggingface.co`、`cdn-lfs.huggingface.co`、`cdn.jsdelivr.net` が 403)。上の計測のすべてが、これに依存する。
 - GPU が無く、WebGPU の計測ができない。
-- LFM3 のライセンスの条件と日本語への対応、llama.cpp と wllama の LFM3 への対応を、一次情報で確認できない。
+- LFM3 のライセンスの条件、llama.cpp と wllama の LFM3 への対応を、一次情報で確認できない。日本語への対応は、一次情報では確認できず、人間の確認(2026-11-04)による。
 - MediaPipe の LLM Inference の文書(`ai.google.dev`)に到達できない。
