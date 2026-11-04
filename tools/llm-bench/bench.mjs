@@ -1,6 +1,6 @@
 // 計測ページの制御。純粋な判定は lib.mjs に置き、ここは DOM とブラウザ API だけを扱う。
 import { createEngine } from './engines.mjs';
-import { leakedTerms, parseConfig, RATING_AXES, summarizeRuns, validateOutput } from './lib.mjs';
+import { leakedTerms, MAX_CONSECUTIVE_FAILURES, parseConfig, RATING_AXES, summarizeRuns, trailingFailures, validateOutput } from './lib.mjs';
 import { buildMessages, TOPICS } from './topics.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -119,6 +119,7 @@ async function runBench(config) {
     storageDeltaBytes: storageBefore === null || storageAfter === null ? null : storageAfter - storageBefore };
   const memory = { afterLoad: await memorySnapshot() };
 
+  let aborted = null;
   if (load.error === null) {
     const plan = Array.from({ length: config.reps }, () => TOPICS.filter((t) => config.topics.includes(t.id))).flat();
     for (const [i, entry] of plan.entries()) {
@@ -131,17 +132,22 @@ async function runBench(config) {
         const verdict = validateOutput(out.text);
         run = { ...base, raw: out.text, ...verdict, leaked: leakedTerms(verdict.candidates), ttftMs: out.ttftMs, totalMs: out.totalMs, tokens: out.tokens, truncated: out.truncated, ratings: {} };
       } catch (e) {
-        run = { ...base, raw: String(e?.stack ?? e), valid: false, reasons: ['生成が例外で失敗'], candidates: [], leaked: [], ttftMs: null, totalMs: null, tokens: 0, truncated: false, hadThinking: false, duplicates: false, ratings: {} };
+        run = { ...base, raw: String(e?.stack ?? e), valid: false, reasons: ['生成が例外で失敗'], failed: true, candidates: [], leaked: [], ttftMs: null, totalMs: null, tokens: 0, truncated: false, hadThinking: false, duplicates: false, ratings: {} };
       }
       runs.push(run);
       addRow(runs.length - 1, entry, run);
+      // WHY NOT: クラッシュした後も続けない。同じ定型の失敗を並べても情報が増えず、時間を使う。
+      if (trailingFailures(runs) >= MAX_CONSECUTIVE_FAILURES) {
+        aborted = `生成が ${MAX_CONSECUTIVE_FAILURES} 回続けて例外で失敗したので、${runs.length}/${plan.length} 件で止めた`;
+        break;
+      }
     }
     memory.afterRuns = await memorySnapshot();
   }
   const engineInfo = engine?.info() ?? null;
   await engine?.close().catch(() => {});
-  result = { schema: 'censored-llm-bench/1', finishedAt: new Date().toISOString(), config, engine: engineInfo, env, load, memory, runs };
-  setStatus(load.error === null ? '終わった。結果を保存して、要約を渡す。' : `読み込みに失敗した: ${load.error.split('\n')[0]}`);
+  result = { schema: 'censored-llm-bench/1', finishedAt: new Date().toISOString(), config, engine: engineInfo, env, load, memory, aborted, runs };
+  setStatus(load.error === null ? (aborted ?? '終わった。結果を保存して、要約を渡す。') : `読み込みに失敗した: ${load.error.split('\n')[0]}`);
   $('start').disabled = false;
   $('stop').disabled = true;
   $('download').disabled = false;

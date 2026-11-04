@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  extractJsonArray, graphemeCount, leakedTerms, median, parseConfig, stripThinking, summarizeRuns, validateOutput,
+  extractJsonArray, graphemeCount, leakedTerms, median, parseConfig, stripThinking, summarizeRuns, trailingFailures, validateOutput,
 } from '../lib.mjs';
 
 const IDS = [1, 2, 3];
@@ -77,6 +77,27 @@ test('構成: no_think は 0 か 1 だけを受け取る', () => {
   assert.equal(parse('?config=1&backend=wasm&no_think=').ok, false);
   assert.equal(parse('?config=3&backend=wasm&no_think=1').config.noThink, true);
   assert.equal(parse('?config=1&backend=wasm&no_think=0').config.noThink, false);
+});
+
+test('構成: jinja と chat_template は指定したときだけ渡し、指定が無ければ未指定のまま', () => {
+  const none = parse('?config=6&backend=wasm').config;
+  assert.equal(none.jinja, undefined);
+  assert.equal(none.chatTemplate, undefined);
+  assert.equal(parse('?config=6&backend=wasm&jinja=0').config.jinja, false);
+  assert.equal(parse('?config=6&backend=wasm&jinja=1').config.jinja, true);
+  assert.equal(parse('?config=6&backend=wasm&chat_template=chatml').config.chatTemplate, 'chatml');
+  assert.equal(parse('?config=6&backend=wasm&jinja=2').ok, false);
+  assert.equal(parse('?config=6&backend=wasm&chat_template=').ok, false);
+});
+
+test('失敗の連続: 末尾で連続している例外の失敗だけを数え、成功で数え直す', () => {
+  const f = { failed: true };
+  const ok = { valid: false };
+  assert.equal(trailingFailures([]), 0);
+  assert.equal(trailingFailures([f, f, ok]), 0);
+  assert.equal(trailingFailures([ok, f, f]), 2);
+  assert.equal(trailingFailures([f, f, ok, f]), 1);
+  assert.equal(trailingFailures([ok, ok]), 0);
 });
 
 test('構成: 複数の誤りはすべて報告する', () => {

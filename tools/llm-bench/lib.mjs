@@ -64,8 +64,15 @@ export function parseConfig(search, topicIds) {
     if (unknown.length > 0 || topics.length === 0) errors.push(`topics は all か、${topicIds.join(',')} のうちのカンマ区切り(受け取った値: ${topicsParam})`);
   }
 
-  const noThinkParam = q.get('no_think');
-  if (noThinkParam !== null && noThinkParam !== '0' && noThinkParam !== '1') errors.push(`no_think は 0 か 1(受け取った値: ${noThinkParam})`);
+  const flag = (name) => {
+    const raw = q.get(name);
+    if (raw !== null && raw !== '0' && raw !== '1') errors.push(`${name} は 0 か 1(受け取った値: ${raw})`);
+    return raw;
+  };
+  const noThinkParam = flag('no_think');
+  const jinjaParam = flag('jinja');
+  const chatTemplate = q.get('chat_template');
+  if (chatTemplate === '') errors.push('chat_template が空');
 
   if (errors.length > 0) return { ok: false, errors };
   return {
@@ -87,6 +94,8 @@ export function parseConfig(search, topicIds) {
       topP,
       topK,
       threads,
+      jinja: jinjaParam === null ? undefined : Boolean(Number(jinjaParam)),
+      chatTemplate: chatTemplate ?? undefined,
       noThink: noThinkParam === null ? preset.noThink : Boolean(Number(noThinkParam)),
     },
   };
@@ -170,6 +179,15 @@ const average = (values) => {
   const v = values.filter((x) => Number.isFinite(x));
   return v.length === 0 ? null : v.reduce((a, b) => a + b, 0) / v.length;
 };
+
+export const MAX_CONSECUTIVE_FAILURES = 3;
+
+/** 末尾で連続している、生成の例外で失敗した実行の数。クラッシュした後に空回りを続けないために使う。 */
+export function trailingFailures(runs) {
+  let n = 0;
+  for (let i = runs.length - 1; i >= 0 && runs[i].failed === true; i -= 1) n += 1;
+  return n;
+}
 
 export const RATING_AXES = ['moderation', 'meaning', 'naturalness', 'variety'];
 

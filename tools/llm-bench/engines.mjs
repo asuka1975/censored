@@ -74,6 +74,8 @@ async function createWllama(config, onProgress) {
           n_ctx: 2048,
           ...(config.backend === 'wasm' ? { n_gpu_layers: 0 } : {}),
           ...(config.threads ? { n_threads: config.threads } : {}),
+          ...(config.jinja === undefined ? {} : { jinja: config.jinja }),
+          ...(config.chatTemplate ? { chat_template: config.chatTemplate } : {}),
         },
       );
     },
