@@ -2,7 +2,7 @@
 title: アーキテクチャ概要
 owner: asuka1975
 status: draft
-last_reviewed: 2026-11-03
+last_reviewed: 2026-11-04
 ---
 
 # アーキテクチャ概要
@@ -28,7 +28,7 @@ flowchart LR
   client -- "HTTP / JSON(contract/ で検証)" --> server
 ```
 
-候補の生成は、利用者のブラウザの中で LLM を動かして行う(WebGPU。使えなければ WASM)。サーバーに AI の部品は無く、届いた本文を検証して保存するだけである。ランタイムとモデルは [#16](https://github.com/asuka1975/censored/issues/16) で決める。
+候補の生成は、利用者のブラウザの中で LLM を動かして行う(WebGPU。使えなければ WASM)。サーバーに AI の部品は無く、届いた本文を検証して保存するだけである。ランタイムとモデルは [#16](https://github.com/asuka1975/censored/issues/16) で決める([ADR-0012](../adr/0012-browser-llm-runtime.md)、[評価の手順](browser-llm-evaluation.md))。
 
 データストア、配信方式、デプロイ構成は未決定。決定したら ADR を書き、ここに反映する。
 
