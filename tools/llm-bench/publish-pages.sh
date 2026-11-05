@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 計測ページ(tools/llm-bench の静的ファイル 5 つ)を gh-pages ブランチへ公開する。
+# 計測ページと診断ページ(tools/llm-bench の静的ファイル 7 つ)を gh-pages ブランチへ公開する。
 #   tools/llm-bench/publish-pages.sh            公開する
 #   PAGES_DRY_RUN=1 tools/llm-bench/publish-pages.sh   中身を表示するだけで、push しない
 # HEAD にコミットされた版を使い、作業ツリーの未コミットの変更は見ない。
@@ -10,7 +10,7 @@
 set -euo pipefail
 
 BRANCH="${PAGES_BRANCH:-gh-pages}"
-FILES=(index.html bench.mjs engines.mjs lib.mjs topics.mjs)
+FILES=(index.html bench.mjs engines.mjs lib.mjs topics.mjs probe.html probe.mjs)
 
 cd "$(git rev-parse --show-toplevel)"
 source_sha="$(git rev-parse --short HEAD)"

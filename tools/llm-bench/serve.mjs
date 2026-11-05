@@ -9,13 +9,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
-// WHY NOT: ディレクトリを丸ごと配信しない。許可した 5 つだけを返し、パスの組み立てによる読み出しを起こさない。
+// WHY NOT: ディレクトリを丸ごと配信しない。許可した 7 つだけを返し、パスの組み立てによる読み出しを起こさない。
 const FILES = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/index.html': ['index.html', 'text/html; charset=utf-8'],
   '/bench.mjs': ['bench.mjs', 'text/javascript; charset=utf-8'],
   '/engines.mjs': ['engines.mjs', 'text/javascript; charset=utf-8'],
   '/lib.mjs': ['lib.mjs', 'text/javascript; charset=utf-8'],
+  '/probe.html': ['probe.html', 'text/html; charset=utf-8'],
+  '/probe.mjs': ['probe.mjs', 'text/javascript; charset=utf-8'],
   '/topics.mjs': ['topics.mjs', 'text/javascript; charset=utf-8'],
 };
 

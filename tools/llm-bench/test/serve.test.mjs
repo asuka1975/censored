@@ -26,9 +26,9 @@ test('配信: 未知の isolation は拒否する', () => {
   assert.throws(() => createServer({ isolation: 'x' }), /isolation は/);
 });
 
-test('配信: ページと 4 つのモジュールを、種類に合った型で返す', async () => {
+test('配信: 計測ページと診断ページと、そのモジュールを、種類に合った型で返す', async () => {
   await withServer('off', async (base) => {
-    for (const [p, type] of [['/', 'text/html'], ['/index.html', 'text/html'], ['/bench.mjs', 'text/javascript'], ['/engines.mjs', 'text/javascript'], ['/lib.mjs', 'text/javascript'], ['/topics.mjs', 'text/javascript']]) {
+    for (const [p, type] of [['/', 'text/html'], ['/index.html', 'text/html'], ['/bench.mjs', 'text/javascript'], ['/engines.mjs', 'text/javascript'], ['/lib.mjs', 'text/javascript'], ['/topics.mjs', 'text/javascript'], ['/probe.html', 'text/html'], ['/probe.mjs', 'text/javascript']]) {
       const res = await fetch(base + p);
       assert.equal(res.status, 200, p);
       assert.ok(res.headers.get('content-type').startsWith(type), p);
