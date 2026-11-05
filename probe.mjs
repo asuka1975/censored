@@ -3,7 +3,10 @@
 const MIB = 1024 * 1024;
 const q = new URLSearchParams(location.search);
 const list = (name, fallback) => (q.get(name) ?? fallback).split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
-const SIZES = { opfs: list('opfs_mib', '64,256,512'), mem: list('mem_mib', '256,512,1024,2048'), gpu: list('gpu_mib', '256,512,1024') };
+const SIZES = {
+  opfs: list('opfs_mib', '64,256,512'), mem: list('mem_mib', '256,512,1024,2048'), gpu: list('gpu_mib', '256,512,1024'),
+  cache: list('cache_mib', '16,64,256'), idb: list('idb_mib', '16,64,256'),
+};
 const HF_REPO = q.get('repo') ?? 'unsloth/Qwen3-0.6B-GGUF';
 const HF_FILE = q.get('file') ?? 'Qwen3-0.6B-Q4_K_M.gguf';
 
@@ -37,24 +40,32 @@ async function ladder(sizes, attempt) {
   return { reachedMiB: reached, failedAtMiB: null };
 }
 
+// どの操作で失敗したかを error に含める(stage)。
 const OPFS_WORKER = `
 onmessage = async (e) => {
   const { mib } = e.data;
+  let stage = 'getDirectory';
   let handle = null;
   try {
     const root = await navigator.storage.getDirectory();
+    stage = 'getDirectoryHandle';
     const dir = await root.getDirectoryHandle('probe', { create: true });
+    stage = 'getFileHandle';
     const file = await dir.getFileHandle('probe.bin', { create: true });
+    stage = 'createSyncAccessHandle';
     handle = await file.createSyncAccessHandle();
+    stage = 'truncate';
     handle.truncate(0);
     const chunk = new Uint8Array(8 * 1024 * 1024);
     let written = 0;
+    stage = 'write';
     const t = performance.now();
     while (written < mib * 1024 * 1024) { handle.write(chunk, { at: written }); written += chunk.byteLength; }
+    stage = 'flush';
     handle.flush();
     postMessage({ ok: true, writtenMiB: written / 1048576, seconds: (performance.now() - t) / 1000 });
   } catch (err) {
-    postMessage({ ok: false, error: (err && err.name) + ': ' + (err && err.message) });
+    postMessage({ ok: false, error: stage + ': ' + (err && err.name) + ': ' + (err && err.message) });
   } finally {
     try { handle && handle.close(); } catch {}
     try { const root = await navigator.storage.getDirectory(); await root.removeEntry('probe', { recursive: true }); } catch {}
@@ -108,6 +119,60 @@ async function run() {
   await step('OPFS(ワーカーで書き込み)', () => ladder(SIZES.opfs, async (mib) => {
     const r = await inWorker(OPFS_WORKER, { mib });
     if (!r.ok) throw new Error(r.error);
+  }));
+  await step('OPFS(メインスレッド)', async () => {
+    let stage = 'getDirectory';
+    try {
+      const root = await navigator.storage.getDirectory();
+      stage = 'getDirectoryHandle';
+      const dir = await root.getDirectoryHandle('probe-main', { create: true });
+      stage = 'getFileHandle';
+      const file = await dir.getFileHandle('a.bin', { create: true });
+      const hasCreateWritable = typeof file.createWritable === 'function';
+      let wrote = null;
+      if (hasCreateWritable) {
+        stage = 'createWritable';
+        const writable = await file.createWritable();
+        await writable.write(new Uint8Array(1024));
+        await writable.close();
+        wrote = true;
+      }
+      return { hasCreateWritable, wrote };
+    } catch (e) {
+      throw new Error(`${stage}: ${describe(e)}`);
+    } finally {
+      try { await (await navigator.storage.getDirectory()).removeEntry('probe-main', { recursive: true }); } catch { /* 無ければよい */ }
+    }
+  });
+  await step('Cache Storage への書き込み', () => ladder(SIZES.cache, async (mib) => {
+    const cache = await caches.open('probe');
+    try {
+      await cache.put(`/probe/${mib}`, new Response(new Blob([new Uint8Array(mib * MIB)])));
+      const size = (await (await cache.match(`/probe/${mib}`)).blob()).size;
+      if (size !== mib * MIB) throw new Error(`読み戻した大きさが違う: ${size}`);
+    } finally {
+      await caches.delete('probe');
+    }
+  }));
+  await step('IndexedDB への書き込み', () => ladder(SIZES.idb, async (mib) => {
+    const db = await new Promise((resolve, reject) => {
+      const open = indexedDB.open('probe', 1);
+      open.onupgradeneeded = () => open.result.createObjectStore('blobs');
+      open.onsuccess = () => resolve(open.result);
+      open.onerror = () => reject(open.error);
+    });
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('blobs', 'readwrite');
+        tx.objectStore('blobs').put(new Blob([new Uint8Array(mib * MIB)]), String(mib));
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error ?? new Error('abort'));
+      });
+    } finally {
+      db.close();
+      await new Promise((resolve) => { const del = indexedDB.deleteDatabase('probe'); del.onsuccess = del.onerror = del.onblocked = resolve; });
+    }
   }));
   await step('WebAssembly のメモリ(試行ごとにワーカーを作って終える)', () => ladder(SIZES.mem, async (mib) => {
     const r = await inWorker(MEMORY_WORKER, { mib });

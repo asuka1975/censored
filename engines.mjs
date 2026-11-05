@@ -64,6 +64,24 @@ async function createTransformersJs(config, onProgress) {
   };
 }
 
+// ダウンロードを自分で行い、メモリ上の Blob にする。ストレージ(OPFS)を使わない。
+async function fetchToBlob(url, onProgress) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
+  const total = Number(response.headers.get('content-length') ?? 0);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.byteLength;
+    onProgress({ loaded, total });
+  }
+  return new Blob(chunks);
+}
+
 async function createWllama(config, onProgress) {
   const mod = await import(WLLAMA_URL);
   const wllama = new mod.Wllama({ default: WLLAMA_WASM_URL });
@@ -80,18 +98,28 @@ async function createWllama(config, onProgress) {
     async load() {
       // WHY NOT: WebGPU が使えない端末で、黙って WASM に落とさない。経路が混ざると結果を比べられない。
       if (config.backend === 'webgpu' && !wllama.isSupportWebGPU()) throw new Error('wllama が WebGPU を使えないと報告した');
-      await wllama.loadModelFromHF(
-        { repo: config.repo, file: config.file, quant: config.file ? undefined : config.quant },
-        {
-          progressCallback: ({ loaded, total }) => onProgress({ loaded, total }),
-          ...(config.useCache === undefined ? {} : { useCache: config.useCache }),
-          n_ctx: 2048,
-          ...(config.backend === 'wasm' ? { n_gpu_layers: 0 } : {}),
-          ...(config.threads ? { n_threads: config.threads } : {}),
-          ...(config.jinja === undefined ? {} : { jinja: config.jinja }),
-          ...(config.chatTemplate ? { chat_template: config.chatTemplate } : {}),
-        },
-      );
+      const hf = { repo: config.repo, file: config.file, quant: config.file ? undefined : config.quant };
+      const loadParams = {
+        n_ctx: 2048,
+        ...(config.backend === 'wasm' ? { n_gpu_layers: 0 } : {}),
+        ...(config.threads ? { n_threads: config.threads } : {}),
+        ...(config.jinja === undefined ? {} : { jinja: config.jinja }),
+        ...(config.chatTemplate ? { chat_template: config.chatTemplate } : {}),
+      };
+      if (config.download === 'memory') {
+        // WHY NOT: loadModelFromHF の useCache: false に頼らない。それは「キャッシュを探さず、ダウンロードし直す」だけで、
+        // ダウンロードしたファイルは OPFS に書かれ、そこから読み戻される。OPFS が使えない端末では、メモリ上の Blob を渡す。
+        const source = await mod.getHFModelSource(hf);
+        const blob = await fetchToBlob(source.url, onProgress);
+        await wllama.loadModel([blob], loadParams);
+        return;
+      }
+      await wllama.loadModelFromHF(hf, {
+        progressCallback: ({ loaded, total }) => onProgress({ loaded, total }),
+        // 指定したときだけ渡す。false は「キャッシュを探さずダウンロードし直す」で、保存はする。
+        ...(config.useCache === undefined ? {} : { useCache: config.useCache }),
+        ...loadParams,
+      });
     },
     async generate(messages) {
       let tokens = 0;

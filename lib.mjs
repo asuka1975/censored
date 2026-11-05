@@ -20,6 +20,7 @@ export const PRESETS = {
 
 const BACKENDS = ['webgpu', 'wasm'];
 export const PROMPT_FORMATS = ['chat', 'chatml'];
+export const DOWNLOADS = ['library', 'memory'];
 const CACHE_STATES = ['cold', 'warm', 'unknown'];
 
 const toNumber = (text) => (text === null || text.trim() === '' ? NaN : Number(text));
@@ -78,6 +79,9 @@ export function parseConfig(search, topicIds) {
   const promptFormat = q.get('prompt_format') ?? 'chat';
   if (!PROMPT_FORMATS.includes(promptFormat)) errors.push(`prompt_format は ${PROMPT_FORMATS.join(' か ')}(受け取った値: ${promptFormat})`);
   else if (promptFormat !== 'chat' && preset?.runtime !== 'wllama') errors.push('prompt_format は wllama の構成(config=4〜6)でだけ使える');
+  const download = q.get('download') ?? 'library';
+  if (!DOWNLOADS.includes(download)) errors.push(`download は ${DOWNLOADS.join(' か ')}(受け取った値: ${download})`);
+  else if (download !== 'library' && preset?.runtime !== 'wllama') errors.push('download は wllama の構成(config=4〜6)でだけ使える');
 
   if (errors.length > 0) return { ok: false, errors };
   return {
@@ -103,6 +107,7 @@ export function parseConfig(search, topicIds) {
       useCache: useCacheParam === null ? undefined : Boolean(Number(useCacheParam)),
       chatTemplate: chatTemplate ?? undefined,
       promptFormat,
+      download,
       noThink: noThinkParam === null ? preset.noThink : Boolean(Number(noThinkParam)),
     },
   };
