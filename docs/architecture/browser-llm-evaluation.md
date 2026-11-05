@@ -49,7 +49,18 @@ last_reviewed: 2026-11-04
 | 5 | `unsloth/Qwen3-1.7B-GGUF`(Q4_K_M) | 推測 |
 | 6 | `LiquidAI/LFM3-1.7B-GGUF`(Q4_K_M) | 推測。llama.cpp が LFM3 に対応していないと、読み込みで失敗する(失敗も結果である) |
 
-### 1 つの構成を測る
+### GitHub Pages で測る
+
+手元のサーバーとブランチの取得が要らない。`gh-pages` ブランチに、計測ページの静的ファイルだけを置いて公開する。`main` へのマージは要らない。HTTPS なので WebGPU が使え、スマートフォンでは最も手軽である。
+
+- URL: `https://asuka1975.github.io/censored/?config=3&backend=webgpu&cache=cold`(Settings → Pages で「Deploy from a branch」、`gh-pages` の `/ (root)` を指定した場合)。
+- 公開と更新: `tools/llm-bench/publish-pages.sh`。HEAD にコミットされた版を公開する。`PAGES_DRY_RUN=1` を付けると、公開する中身の表示だけをする。
+- **Pages では測れないもの。** ヘッダーを設定できないので、cross-origin isolation にならない。wllama のマルチスレッドと、`performance.measureUserAgentSpecificMemory` は使えない。それらはローカルのサーバー(下の手順)で測る。
+- 保存先は `asuka1975.github.io` のオリジンで、同じ利用者の他の Pages サイトと共有される。「Clear site data」は他のサイトのデータも消すので、計測用のブラウザプロファイルを使う。
+- Pages はファイルを 10 分程度キャッシュする。更新後はハードリロードする。
+- 公開されている。誰でも開け、各自のブラウザでモデルをダウンロードする。計測が終わったら `gh-pages` ブランチを削除して、公開を止める。
+
+### 1 つの構成を測る(ローカルのサーバー)
 
 1. サーバーを起動する。`--isolation` は後述。
 
@@ -79,12 +90,12 @@ last_reviewed: 2026-11-04
 
 - **冷間が冷間でないとき。** 要約の `load.storageDeltaBytes` が 0 に近ければ、キャッシュが残っていた。「Clear site data」で消えなかったので、新しいプロファイルで測り直す。
 - **WebGPU の経路。** 使えない端末では、ページは「アダプターを取得できない」と表示して止まる。WASM に黙って落とすことはしない。
-- **wllama のマルチスレッド。** `--isolation require-corp`(または `credentialless`)でサーバーを起動した測定と、起動しない測定の両方を取る。結果の `env.crossOriginIsolated` で見分けられる。ヘッダーを付けると、CDN からの読み込みが拒否されて失敗することがある。失敗したら、そのまま報告する。
+- **wllama のマルチスレッド。** `--isolation require-corp`(または `credentialless`)でサーバーを起動した測定と、起動しない測定の両方を取る。結果の `env.crossOriginIsolated` で見分けられる。ヘッダーを付けると、CDN からの読み込みが拒否されて失敗することがある。失敗したら、そのまま報告する。GitHub Pages では測れない。
 - **生成は貪欲法(temperature=0)。** 再現するため。繰り返しの出力で無効が増えたら、サンプリングを足して測り直し、設定を書く(例: `temperature=0.7&top_p=0.8&top_k=20`。Qwen3 のモデルカードの推奨値を覚えているものだが、ここでは確かめていない。LFM3 の推奨値はモデルカードで確かめる)。
 - **量子化の指定。** transformers.js の `dtype` は q4 が既定。WebGPU で `shader-f16` が使える端末(結果の `env.adapter.shaderF16`)では、`dtype=q4f16` も測る価値がある。wllama は `quant=Q4_K_M` が既定。
 - **Qwen3 の思考。** Qwen3 の構成は、利用者の発言の末尾に `/no_think` を付けて思考を止める。LFM3 には付けない。それでも `<think>` が出たときは取り除いて判定し、`hadThinking` に記録する。
 - **チャットテンプレートが無い GGUF。** #6 のように `createChatCompletion` が落ちるときは、`prompt_format=chatml` を付けて測り直せる(wllama の構成だけ)。LFM3 の本来の形式を確かめるまで、この結果は参考値として扱う。
-- **スマートフォン。** Android の Chrome なら、USB デバッグで `adb reverse tcp:8080 tcp:8080` をして `http://localhost:8080` を開く(localhost は安全なコンテキストなので WebGPU が使える。この手順は未確認)。iPhone で使える手軽な方法は用意していない。
+- **スマートフォン。** GitHub Pages で開く(上の節)。
 
 ### 道具のテストと削除
 
@@ -94,7 +105,7 @@ last_reviewed: 2026-11-04
 node --test tools/llm-bench/test/*.test.mjs
 ```
 
-計測の結果を ADR-0012 に反映したら、`tools/llm-bench/` を削除する。
+計測の結果を ADR-0012 に反映したら、`tools/llm-bench/` と `gh-pages` ブランチを削除する。
 
 ### 結果を返す
 
