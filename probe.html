@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Censored 端末の診断</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 48rem; margin: 1rem auto; padding: 0 1rem; line-height: 1.5; }
+  textarea { width: 100%; box-sizing: border-box; font-size: 0.8rem; }
+  button { font-size: 1rem; padding: 0.4rem 1rem; margin-right: 0.5rem; }
+</style>
+</head>
+<body>
+<h1>Censored 端末の診断</h1>
+<p>モデルを読み込む前提の能力(ストレージ、メモリ、ワーカー、WebGPU、取得先への接続)を、1 つずつ試して、どこで失敗するかを残す。計測の道具のページではない。</p>
+<p><button id="start">診断を始める</button><button id="copy">結果をコピー</button></p>
+<p id="status" role="status"></p>
+<textarea id="out" rows="24" readonly></textarea>
+<script type="module" src="./probe.mjs"></script>
+</body>
+</html>
