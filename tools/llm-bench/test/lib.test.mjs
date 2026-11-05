@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  extractJsonArray, firstFailure, graphemeCount, leakedTerms, median, parseConfig, stripThinking, summarizeRuns, trailingFailures, validateOutput,
+  extractJsonArray, firstFailure, graphemeCount, leakedTerms, median, parseConfig, renderPrompt, stripThinking, summarizeRuns, trailingFailures, validateOutput,
 } from '../lib.mjs';
 
 const IDS = [1, 2, 3];
@@ -98,6 +98,20 @@ test('失敗の連続: 末尾で連続している例外の失敗だけを数え
   assert.equal(trailingFailures([ok, f, f]), 2);
   assert.equal(trailingFailures([f, f, ok, f]), 1);
   assert.equal(trailingFailures([ok, ok]), 0);
+});
+
+test('プロンプト形式: 既定は chat で、chatml は wllama の構成でだけ指定できる', () => {
+  assert.equal(parse('?config=6&backend=wasm').config.promptFormat, 'chat');
+  assert.equal(parse('?config=6&backend=wasm&prompt_format=chatml').config.promptFormat, 'chatml');
+  assert.equal(parse('?config=6&backend=wasm&prompt_format=llama').ok, false);
+  assert.equal(parse('?config=3&backend=wasm&prompt_format=chatml').ok, false);
+  assert.equal(parse('?config=3&backend=wasm&prompt_format=chat').ok, true);
+});
+
+test('プロンプト形式: chatml は役割ごとに区切り、最後に assistant の開始を付ける(BOS は含めない)', () => {
+  const messages = [{ role: 'system', content: 'S' }, { role: 'user', content: 'U\nx' }];
+  assert.equal(renderPrompt(messages, 'chatml'), '<|im_start|>system\nS<|im_end|>\n<|im_start|>user\nU\nx<|im_end|>\n<|im_start|>assistant\n');
+  assert.throws(() => renderPrompt(messages, 'chat'), /未対応のプロンプト形式/);
 });
 
 test('最初の失敗: 例外で失敗した最初の実行の本文を返し、無ければ null、長いものは切る', () => {

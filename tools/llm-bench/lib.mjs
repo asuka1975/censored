@@ -19,6 +19,7 @@ export const PRESETS = {
 };
 
 const BACKENDS = ['webgpu', 'wasm'];
+export const PROMPT_FORMATS = ['chat', 'chatml'];
 const CACHE_STATES = ['cold', 'warm', 'unknown'];
 
 const toNumber = (text) => (text === null || text.trim() === '' ? NaN : Number(text));
@@ -73,6 +74,9 @@ export function parseConfig(search, topicIds) {
   const jinjaParam = flag('jinja');
   const chatTemplate = q.get('chat_template');
   if (chatTemplate === '') errors.push('chat_template が空');
+  const promptFormat = q.get('prompt_format') ?? 'chat';
+  if (!PROMPT_FORMATS.includes(promptFormat)) errors.push(`prompt_format は ${PROMPT_FORMATS.join(' か ')}(受け取った値: ${promptFormat})`);
+  else if (promptFormat !== 'chat' && preset?.runtime !== 'wllama') errors.push('prompt_format は wllama の構成(config=4〜6)でだけ使える');
 
   if (errors.length > 0) return { ok: false, errors };
   return {
@@ -96,9 +100,19 @@ export function parseConfig(search, topicIds) {
       threads,
       jinja: jinjaParam === null ? undefined : Boolean(Number(jinjaParam)),
       chatTemplate: chatTemplate ?? undefined,
+      promptFormat,
       noThink: noThinkParam === null ? preset.noThink : Boolean(Number(noThinkParam)),
     },
   };
+}
+
+/**
+ * チャットテンプレートを通さず、メッセージを 1 つのプロンプトの文字列にする(wllama の createCompletion 用)。
+ * WHY NOT: BOS を文字列に含めない。モデルが要求するとき、llama.cpp が自分で付けるので、二重になる。
+ */
+export function renderPrompt(messages, format) {
+  if (format !== 'chatml') throw new Error(`未対応のプロンプト形式: ${format}`);
+  return `${messages.map((m) => `<|im_start|>${m.role}\n${m.content}<|im_end|>\n`).join('')}<|im_start|>assistant\n`;
 }
 
 export function graphemeCount(text, segmenter = new Intl.Segmenter('ja', { granularity: 'grapheme' })) {

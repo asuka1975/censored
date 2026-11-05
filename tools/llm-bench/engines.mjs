@@ -1,3 +1,5 @@
+import { renderPrompt } from './lib.mjs';
+
 // ランタイムごとの差を閉じ込める。どちらも { info, load, generate, close } を返す。
 // WHY NOT: ライブラリは npm の依存にしない。計測が終わったら捨てる道具で、台帳に登録する対象にしない。版を固定して CDN から取る。
 
@@ -61,8 +63,8 @@ async function createWllama(config, onProgress) {
     info: () => ({
       library: 'wllama 3.8.1',
       libllama: mod.Wllama.getLibllamaVersion(),
-      // モデル自身のチャットテンプレート。生成が落ちたとき、原因の手がかりにする。
-      chatTemplate: wllama.isModelLoaded() ? (wllama.getChatTemplate() ?? '').slice(0, 4000) : null,
+      // モデル自身のチャットテンプレート。GGUF に無ければ null(空文字列とは区別する)。生成が落ちたとき、原因の手がかりにする。
+      chatTemplate: wllama.isModelLoaded() ? (wllama.getChatTemplate()?.slice(0, 4000) ?? null) : null,
       webgpuSupported: wllama.isSupportWebGPU(),
       multithread: wllama.isModelLoaded() ? wllama.isMultithread() : null,
       threads: wllama.isModelLoaded() ? wllama.getNumThreads() : null,
@@ -89,8 +91,8 @@ async function createWllama(config, onProgress) {
       let finishReason = null;
       let completionTokens = null;
       const started = now();
-      await wllama.createChatCompletion({
-        messages,
+      const raw = config.promptFormat !== 'chat';
+      const params = {
         max_tokens: config.maxTokens,
         temperature: config.temperature,
         ...(config.topP === undefined ? {} : { top_p: config.topP }),
@@ -98,15 +100,19 @@ async function createWllama(config, onProgress) {
         stream: true,
         onData: (chunk) => {
           const choice = chunk.choices?.[0];
-          if (choice?.delta?.content) {
+          const piece = raw ? choice?.text : choice?.delta?.content;
+          if (piece) {
             tokens += 1;
-            text += choice.delta.content;
+            text += piece;
             firstTokenAt ??= now();
           }
           if (choice?.finish_reason) finishReason = choice.finish_reason;
           if (chunk.usage) completionTokens = chunk.usage.completion_tokens;
         },
-      });
+      };
+      // 生のプロンプトはチャットテンプレートを通らない。GGUF にテンプレートが無いモデルを動かすための経路。
+      if (raw) await wllama.createCompletion({ prompt: renderPrompt(messages, config.promptFormat), ...params });
+      else await wllama.createChatCompletion({ messages, ...params });
       const finished = now();
       return {
         text,

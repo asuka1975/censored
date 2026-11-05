@@ -83,6 +83,7 @@ last_reviewed: 2026-11-04
 - **生成は貪欲法(temperature=0)。** 再現するため。繰り返しの出力で無効が増えたら、サンプリングを足して測り直し、設定を書く(例: `temperature=0.7&top_p=0.8&top_k=20`。Qwen3 のモデルカードの推奨値を覚えているものだが、ここでは確かめていない。LFM3 の推奨値はモデルカードで確かめる)。
 - **量子化の指定。** transformers.js の `dtype` は q4 が既定。WebGPU で `shader-f16` が使える端末(結果の `env.adapter.shaderF16`)では、`dtype=q4f16` も測る価値がある。wllama は `quant=Q4_K_M` が既定。
 - **Qwen3 の思考。** Qwen3 の構成は、利用者の発言の末尾に `/no_think` を付けて思考を止める。LFM3 には付けない。それでも `<think>` が出たときは取り除いて判定し、`hadThinking` に記録する。
+- **チャットテンプレートが無い GGUF。** #6 のように `createChatCompletion` が落ちるときは、`prompt_format=chatml` を付けて測り直せる(wllama の構成だけ)。LFM3 の本来の形式を確かめるまで、この結果は参考値として扱う。
 - **スマートフォン。** Android の Chrome なら、USB デバッグで `adb reverse tcp:8080 tcp:8080` をして `http://localhost:8080` を開く(localhost は安全なコンテキストなので WebGPU が使える。この手順は未確認)。iPhone で使える手軽な方法は用意していない。
 
 ### 道具のテストと削除
@@ -213,7 +214,8 @@ node --test tools/llm-bench/test/*.test.mjs
 - メモリ(タスクマネージャーの値)と、候補の質の採点は、入れていない。
 - 「有効な出力」は、形式が合うかだけを見る。内容の良し悪しを表さない(下の観察を見る)。
 - #2、#3 は、エラーの文面を受け取っていないので、原因が分からない。
-- #6 は、モデルの読み込みは成功したが、最初の生成で wllama が abort し(`common_chat_templates_get_caps`)、以降は「クラッシュ済み」で全件失敗した。`jinja=0&chat_template=chatml` を付けて測り直しても、3 回続けて例外で失敗して止まった(2 回目の読み込みは 0.6 秒で、ストレージの増分は 0。ただし生成できないので、読み込みが完了していたかは分からない)。要約に失敗の本文が無く、同じ abort かは確かめられていない。原因の切り分けには、モデル自身のチャットテンプレートと llama.cpp の版が要る(道具が要約に含めるようにした)。モデルが動かないと決めるのは早い。
+- #6 は、モデルの読み込みは成功したが、最初の生成で wllama が abort し(`common_chat_templates_get_caps` ← `oaicompat_chat_params_parse`)、以降は「クラッシュ済み」で全件失敗した。`jinja=0&chat_template=chatml` を付けても、同じ abort で 3 回続けて失敗して止まった。診断を足して測り直すと、llama.cpp は `b11364-46ca246`、`getChatTemplate()` は空だった。**wllama から見て、この GGUF にはチャットテンプレートが無い**(診断の初版は「無い」と「空」を区別していなかったので、`null` と書くよう直した)。チャットテンプレートを要求する経路(`createChatCompletion`)がテンプレートの無いモデルで落ちる、という説明が付くが、llama.cpp の内部で確かめたわけではない。モデルが動かないと決めるのは早い。
+- 生のプロンプトで生成する経路(`prompt_format=chatml`、wllama の `createCompletion`)を足した。チャットテンプレートを通らない。**LFM3 の本来のプロンプト形式は確かめていない。** ChatML 風の形式で測ると、形式が違う場合に LFM3 の質を低く測る。この経路の結果には形式を書き、LFM3 の評価の結論には使わない。
 
 ## 観察(途中)
 
@@ -249,7 +251,7 @@ node --test tools/llm-bench/test/*.test.mjs
 - マルチスレッドの WASM(`--isolation require-corp`)。
 - スマートフォン。
 - #2(`onnx-community/Qwen3-1.7B-ONNX`)と #3(`onnx-community/LFM3-1.7B-ONNX`)の取得先と、実行できなかった原因。
-- #6 の失敗の原因。`jinja=0&chat_template=chatml` では回避できなかった。チャットテンプレートを使わない生成(生のプロンプト)は試していない。
+- #6 の失敗の原因の確定と、生のプロンプト(`prompt_format=chatml`)で動くか。LFM3 本来のプロンプト形式。
 - 候補の質の採点(穏当さ、意味、自然さ、違い)。メモリの実測。2 回目の読み込み時間。
 - LFM3 のライセンスの条件。日本語への対応は、一次情報では確認できず、人間の確認(2026-11-04)による。
 - MediaPipe の LLM Inference の文書(`ai.google.dev`)に到達できない。
