@@ -95,7 +95,7 @@ last_reviewed: 2026-11-04
 - **量子化の指定。** transformers.js の `dtype` は q4 が既定。WebGPU で `shader-f16` が使える端末(結果の `env.adapter.shaderF16`)では、`dtype=q4f16` も測る価値がある。wllama は `quant=Q4_K_M` が既定。
 - **Qwen3 の思考。** Qwen3 の構成は、利用者の発言の末尾に `/no_think` を付けて思考を止める。LFM3 には付けない。それでも `<think>` が出たときは取り除いて判定し、`hadThinking` に記録する。
 - **チャットテンプレートが無い GGUF。** #6 のように `createChatCompletion` が落ちるときは、`prompt_format=chatml` を付けて測り直せる(wllama の構成だけ)。LFM3 の本来の形式を確かめるまで、この結果は参考値として扱う。
-- **スマートフォン。** GitHub Pages で開く(上の節)。
+- **スマートフォン。** GitHub Pages で開く(上の節)。Wi-Fi に接続し、測定の間は画面を点けたままにする。道具は画面を点けたままにする要求(Screen Wake Lock)を出すが、拒否されることがある。結果の `env.wakeLock` と、`visibility`(ページが隠れた回数と秒数)で確かめられる。最も小さい構成(#1 か #4)で動くことを先に確かめてから、大きい構成に進む。読み込みが途中で失敗したときは、結果の `engine.lastFile` が、直前にダウンロードしていたファイルを示す(transformers.js のみ)。
 
 ### 道具のテストと削除
 
@@ -208,7 +208,7 @@ node --test tools/llm-bench/test/*.test.mjs
 | 1 | WASM | A | 928 | 46.0 | | 46.8 | | 14 | | | | |
 | 2 | WebGPU | | | | | | | | | | | |
 | 2 | WASM | A | | | | | | 実行できず | | | | |
-| 3 | WebGPU | | | | | | | | | | | |
+| 3 | WebGPU | B | 470(合計 1315 のうち。途中で失敗) | 失敗(1018) | | | | 読み込みに失敗 | | | | |
 | 3 | WASM | A | | | | | | 実行できず | | | | |
 | 4 | WebGPU | | | | | | | | | | | |
 | 4 | WASM | A | 397 | 13.9 | | 10.7 | | 8 | | | | |
@@ -216,6 +216,8 @@ node --test tools/llm-bench/test/*.test.mjs
 | 5 | WASM | A | 1107 | 31.4 | | 18.7 | | 9 | | | | |
 | 6 | WebGPU | | | | | | | | | | | |
 | 6 | WASM | A | 1100 | 30.8 | | 失敗 | | 0 | | | | |
+
+端末 B: iPhone。User-Agent は iOS 18.7 相当、Safari 26.6.1。論理コア 4。Apple の GPU(WebGPU あり、`shader-f16` あり、`maxBufferSize` 1 GiB)。GitHub Pages 経由。回線の種類は記録なし。
 
 表の読み方と、足りないところ:
 
@@ -226,6 +228,7 @@ node --test tools/llm-bench/test/*.test.mjs
 - 「有効な出力」は、形式が合うかだけを見る。内容の良し悪しを表さない(下の観察を見る)。
 - #2(transformers.js、Qwen3-1.7B の ONNX q4、WASM)は、読み込みで `RangeError: The ArrayBuffer/ArrayBufferView size exceeds the supported range.` で失敗した。モデルのファイルが、WASM(32 ビットのメモリ)で確保できる大きさを超えたとみられる。ダウンロード量は記録に無く、確かめていない。WebGPU の経路は未試行。
 - #3(transformers.js、LFM3-1.7B の ONNX q4、WASM)は、`Can't create a session. ERROR_CODE: 9, ERROR_MESSAGE: Could not find an implementation for GatherBlockQuantized(1) node with name '/model/embed_tokens/Gather_Quant'` で失敗した。モデルの埋め込み層が 4 ビット量子化の演算(GatherBlockQuantized)を使い、WASM の実行環境(onnxruntime-web)にその実装が無い、という読みになる。取得先 `onnx-community/LFM3-1.7B-ONNX` は実在し、セッションの作成までは進んだ。WebGPU の経路と、別の量子化(`dtype=q8`)は未試行。
+- #3 を iPhone(端末 B)の WebGPU で測ったところ、ダウンロードが 470 MB / 1315 MB(36%)で止まり、1018 秒後に `TypeError: Load failed` で失敗した(約 0.46 MB/s)。これは Safari の fetch がネットワークの層で失敗したときの一般的な文面で、ページは生きていた。原因は特定できていない。回線の断や遅さ、画面のロックやアプリの切り替えによるダウンロードの中断などが考えられるが、確かめていない。この測定の道具には、画面を点けたままにする処理と、ページが隠れた回数と時間の記録が無かった。LFM3 の ONNX q4 の合計は、ランタイムの報告で 1315 MB。この測定は、LFM3 が WebGPU の実行環境で動くか(#3 の WASM の失敗は演算の未実装だった)の答えにならない。デスクトップの WebGPU で測る。
 - #6 は、モデルの読み込みは成功したが、最初の生成で wllama が abort し(`common_chat_templates_get_caps` ← `oaicompat_chat_params_parse`)、以降は「クラッシュ済み」で全件失敗した。`jinja=0&chat_template=chatml` を付けても、同じ abort で 3 回続けて失敗して止まった。診断を足して測り直すと、llama.cpp は `b11364-46ca246`、`getChatTemplate()` は空だった。**wllama から見て、この GGUF にはチャットテンプレートが無い**(診断の初版は「無い」と「空」を区別していなかったので、`null` と書くよう直した)。チャットテンプレートを要求する経路(`createChatCompletion`)がテンプレートの無いモデルで落ちる、という説明が付くが、llama.cpp の内部で確かめたわけではない。モデルが動かないと決めるのは早い。
 - 生のプロンプトで生成する経路(`prompt_format=chatml`、wllama の `createCompletion`)を足した。チャットテンプレートを通らない。**LFM3 の本来のプロンプト形式は確かめていない。** ChatML 風の形式で測ると、形式が違う場合に LFM3 の質を低く測るので、この経路の結果は LFM3 の評価の結論には使わないと決めていた。
 - その経路でも失敗した: `RangeError: Invalid typed array length: 1163217991`。この数値は 16 進で `0x45554c47`、ASCII で `GLUE` で、wllama の JS と wasm の間のメッセージの先頭の印である。wllama のワーカーは、出力の長さを入力バッファの先頭 4 バイトから読む(`llama-cpp.js` の `runAction`)。ネイティブの処理が長さを書かずに戻ると、先頭の印が長さとして読まれる。**生のプロンプトの経路でも、ネイティブ側が出力を返せずに失敗している**とみられる。原因を示すメッセージは JS に出ないので、特定できていない。#6 は、wllama 3.8.1(llama.cpp `b11364-46ca246`)では、どちらの経路でも生成できなかった。
@@ -264,7 +267,7 @@ node --test tools/llm-bench/test/*.test.mjs
 
 - WebGPU の経路。端末 A はアダプターがあるが、計測していない。ここまでの数値はすべて WASM である。
 - マルチスレッドの WASM(`--isolation require-corp`)。
-- スマートフォン。
+- スマートフォンでの動作。#3 を iPhone の WebGPU で試したが、ダウンロードの途中で失敗した。動作の測定は未。
 - #2 と #3 を WebGPU で動かせるか。#3 を別の量子化(`dtype=q8`)で WASM で動かせるか。#2 のダウンロード量。
 - #6 の失敗の原因。2 つの経路とも失敗した。ネイティブのログ(DevTools のコンソール)が手がかり。LFM3 本来のプロンプト形式。
 - 候補の質の採点(穏当さ、意味、自然さ、違い)。メモリの実測。2 回目の読み込み時間。

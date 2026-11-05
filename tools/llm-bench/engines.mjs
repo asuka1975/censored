@@ -13,13 +13,16 @@ const now = () => performance.now();
 async function createTransformersJs(config, onProgress) {
   const tjs = await import(TRANSFORMERS_URL);
   let generator = null;
+  // 読み込みが途中で失敗したとき、どのファイルの途中だったかを残す(ブラウザの文面は URL を含まない)。
+  let lastFile = null;
   return {
-    info: () => ({ library: 'transformers.js 4.3.2', device: config.backend, dtype: config.dtype }),
+    info: () => ({ library: 'transformers.js 4.3.2', device: config.backend, dtype: config.dtype, lastFile }),
     async load() {
       generator = await tjs.pipeline('text-generation', config.repo, {
         dtype: config.dtype,
         device: config.backend,
         progress_callback: (p) => {
+          if (p.status === 'progress' && p.file) lastFile = p.file;
           if (p.status === 'progress_total') onProgress({ loaded: p.loaded, total: p.total });
         },
       });
