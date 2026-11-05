@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  extractJsonArray, firstFailure, graphemeCount, leakedTerms, median, parseConfig, renderPrompt, storageWarning, stripThinking, summarizeRuns, trailingFailures, validateOutput,
+  CANDIDATES_SCHEMA, extractJsonArray, firstFailure, graphemeCount, leakedTerms, median, parseConfig, renderPrompt, storageWarning, stripThinking, summarizeRuns, trailingFailures, validateOutput,
 } from '../lib.mjs';
 
 const IDS = [1, 2, 3];
@@ -135,6 +135,25 @@ test('保存の警告: wllama が OPFS を使えない状態で、download=memor
   assert.equal(storageWarning(wllama, 'ok'), null);
   assert.equal(storageWarning({ ...wllama, download: 'memory' }, 'UnknownError: x'), null);
   assert.equal(storageWarning({ runtime: 'transformersjs', download: 'library' }, 'UnknownError: x'), null);
+});
+
+test('構成: cache_prompt と schema は、wllama のチャットの経路でだけ受け取り、0 と 1 だけを許す', () => {
+  const wl = '?config=4&backend=wasm';
+  assert.equal(parse(wl).config.cachePrompt, undefined);
+  assert.equal(parse(wl).config.schema, false);
+  assert.equal(parse(`${wl}&cache_prompt=0`).config.cachePrompt, false);
+  assert.equal(parse(`${wl}&cache_prompt=1`).config.cachePrompt, true);
+  assert.equal(parse(`${wl}&schema=1`).config.schema, true);
+  assert.equal(parse(`${wl}&schema=0`).config.schema, false);
+  for (const bad of ['&cache_prompt=2', '&schema=yes']) assert.equal(parse(wl + bad).ok, false, bad);
+  assert.equal(parse('?config=1&backend=wasm&schema=1').ok, false);
+  assert.equal(parse('?config=1&backend=wasm&cache_prompt=0').ok, false);
+  assert.equal(parse(`${wl}&prompt_format=chatml&schema=1`).ok, false);
+  assert.equal(parse(`${wl}&prompt_format=chatml&cache_prompt=0`).ok, false);
+});
+
+test('スキーマ: 空でない文字列がちょうど 3 つの配列を表し、判定の個数と一致する', () => {
+  assert.deepEqual(CANDIDATES_SCHEMA, { type: 'array', minItems: 3, maxItems: 3, items: { type: 'string', minLength: 1 } });
 });
 
 test('最初の失敗: 例外で失敗した最初の実行の本文を返し、無ければ null、長いものは切る', () => {
