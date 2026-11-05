@@ -157,19 +157,24 @@ async function run() {
     }
   }));
   await step('IndexedDB への書き込み', () => ladder(SIZES.idb, async (mib) => {
+    // WHY NOT: error だけを返さない。失敗したとき request.error が null になり、理由が読めなかった。どの段階かを残す。
+    const failure = (stage, event) => new Error(`${stage}: ${event?.target?.error?.name ?? 'エラーの詳細なし'}: ${event?.target?.error?.message ?? ''}`.trim());
     const db = await new Promise((resolve, reject) => {
-      const open = indexedDB.open('probe', 1);
+      let open;
+      try { open = indexedDB.open('probe', 1); } catch (e) { reject(new Error(`open(例外): ${describe(e)}`)); return; }
       open.onupgradeneeded = () => open.result.createObjectStore('blobs');
       open.onsuccess = () => resolve(open.result);
-      open.onerror = () => reject(open.error);
+      open.onerror = (e) => reject(failure('open', e));
+      open.onblocked = (e) => reject(failure('open(blocked)', e));
     });
     try {
       await new Promise((resolve, reject) => {
         const tx = db.transaction('blobs', 'readwrite');
-        tx.objectStore('blobs').put(new Blob([new Uint8Array(mib * MIB)]), String(mib));
+        const request = tx.objectStore('blobs').put(new Blob([new Uint8Array(mib * MIB)]), String(mib));
+        request.onerror = (e) => reject(failure('put', e));
         tx.oncomplete = resolve;
-        tx.onerror = () => reject(tx.error);
-        tx.onabort = () => reject(tx.error ?? new Error('abort'));
+        tx.onerror = (e) => reject(failure('transaction', e));
+        tx.onabort = (e) => reject(failure('abort', e));
       });
     } finally {
       db.close();
