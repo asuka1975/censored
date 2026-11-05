@@ -89,10 +89,37 @@ function addRow(index, entry, run) {
   $('runs').tBodies[0].append(tr);
 }
 
+// WHY NOT: 画面が消えても計測を続けようとしない。スマートフォンは、画面のロックやアプリの切り替えで
+// ページを止め、ダウンロードの接続を切る。止めないよう画面を点けておき、隠れた回数と時間を結果に残す。
+const visibility = { hiddenCount: 0, hiddenSeconds: 0 };
+let hiddenAt = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    hiddenAt = performance.now();
+    visibility.hiddenCount += 1;
+  } else if (hiddenAt !== null) {
+    visibility.hiddenSeconds += (performance.now() - hiddenAt) / 1000;
+    hiddenAt = null;
+  }
+});
+
+let wakeLock = null;
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return 'unsupported';
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    return 'acquired';
+  } catch (e) {
+    return `denied: ${e?.name ?? e}`;
+  }
+}
+
 async function runBench(config) {
   $('start').disabled = true;
   $('stop').disabled = false;
-  const env = await collectEnv();
+  // 利用者の操作の直後に取る(操作から時間が経つと、要求が拒否されうる)。
+  const wakeLockStatus = await acquireWakeLock();
+  const env = { ...(await collectEnv()), wakeLock: wakeLockStatus };
   if (config.backend === 'webgpu' && !env.adapter) {
     setStatus('WebGPU のアダプターを取得できない。この端末では webgpu の経路を測れない(wasm で測り直す)。');
     $('start').disabled = false;
@@ -113,7 +140,7 @@ async function runBench(config) {
     });
     await engine.load();
   } catch (e) {
-    load = { error: String(e?.stack ?? e) };
+    load = { error: describeError(e) };
   }
   const loadMs = performance.now() - loadStart;
   progress.hidden = true;
@@ -149,7 +176,9 @@ async function runBench(config) {
   }
   const engineInfo = engine?.info() ?? null;
   await engine?.close().catch(() => {});
-  result = { schema: 'censored-llm-bench/1', finishedAt: new Date().toISOString(), config, engine: engineInfo, env, load, memory, aborted, runs };
+  await wakeLock?.release().catch(() => {});
+  if (hiddenAt !== null) { visibility.hiddenSeconds += (performance.now() - hiddenAt) / 1000; hiddenAt = null; }
+  result = { schema: 'censored-llm-bench/1', finishedAt: new Date().toISOString(), config, engine: engineInfo, env, load, memory, visibility: { ...visibility }, aborted, runs };
   setStatus(load.error === null ? (aborted ?? '終わった。結果を保存して、要約を渡す。') : `読み込みに失敗した: ${load.error.split('\n')[0]}`);
   $('start').disabled = false;
   $('stop').disabled = true;
