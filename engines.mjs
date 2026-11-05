@@ -1,3 +1,4 @@
+import { fetchToBlob } from './download.mjs';
 import { renderPrompt } from './lib.mjs';
 
 // ランタイムごとの差を閉じ込める。どちらも { info, load, generate, close } を返す。
@@ -64,31 +65,16 @@ async function createTransformersJs(config, onProgress) {
   };
 }
 
-// ダウンロードを自分で行い、メモリ上の Blob にする。ストレージ(OPFS)を使わない。
-async function fetchToBlob(url, onProgress) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-  const total = Number(response.headers.get('content-length') ?? 0);
-  const reader = response.body.getReader();
-  const chunks = [];
-  let loaded = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.byteLength;
-    onProgress({ loaded, total });
-  }
-  return new Blob(chunks);
-}
-
 async function createWllama(config, onProgress) {
   const mod = await import(WLLAMA_URL);
   const wllama = new mod.Wllama({ default: WLLAMA_WASM_URL });
+  // download=memory で、切れた回数と位置を残す(読み込みが例外で終わっても残る)。
+  const downloadFailures = [];
   return {
     info: () => ({
       library: 'wllama 3.8.1',
       libllama: mod.Wllama.getLibllamaVersion(),
+      downloadFailures,
       // モデル自身のチャットテンプレート。GGUF に無ければ null(空文字列とは区別する)。生成が落ちたとき、原因の手がかりにする。
       chatTemplate: wllama.isModelLoaded() ? (wllama.getChatTemplate()?.slice(0, 4000) ?? null) : null,
       webgpuSupported: wllama.isSupportWebGPU(),
@@ -110,7 +96,7 @@ async function createWllama(config, onProgress) {
         // WHY NOT: loadModelFromHF の useCache: false に頼らない。それは「キャッシュを探さず、ダウンロードし直す」だけで、
         // ダウンロードしたファイルは OPFS に書かれ、そこから読み戻される。OPFS が使えない端末では、メモリ上の Blob を渡す。
         const source = await mod.getHFModelSource(hf);
-        const blob = await fetchToBlob(source.url, onProgress);
+        const blob = await fetchToBlob(source.url, { onProgress, failures: downloadFailures });
         await wllama.loadModel([blob], loadParams);
         return;
       }

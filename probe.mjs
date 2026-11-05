@@ -10,7 +10,9 @@ const SIZES = {
 const HF_REPO = q.get('repo') ?? 'unsloth/Qwen3-0.6B-GGUF';
 const HF_FILE = q.get('file') ?? 'Qwen3-0.6B-Q4_K_M.gguf';
 
-const result = { schema: 'censored-llm-probe/1', startedAt: new Date().toISOString(), userAgent: navigator.userAgent, sizes: SIZES, steps: {} };
+// 公開(gh-pages)では version.mjs が版を示す。ローカルのサーバーには無いので、'local' にする。
+const VERSION = await import('./version.mjs').then((m) => m.VERSION, () => 'local');
+const result = { schema: 'censored-llm-probe/1', harnessVersion: VERSION, startedAt: new Date().toISOString(), userAgent: navigator.userAgent, sizes: SIZES, steps: {} };
 const $ = (id) => document.getElementById(id);
 const describe = (e) => `${e?.name ?? 'Error'}: ${e?.message ?? e}`;
 const render = () => { $('out').value = JSON.stringify(result, null, 2); };
