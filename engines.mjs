@@ -1,5 +1,5 @@
 import { fetchToBlob } from './download.mjs';
-import { renderPrompt } from './lib.mjs';
+import { CANDIDATES_SCHEMA, renderPrompt } from './lib.mjs';
 
 // ランタイムごとの差を閉じ込める。どちらも { info, load, generate, close } を返す。
 // WHY NOT: ライブラリは npm の依存にしない。計測が終わったら捨てる道具で、台帳に登録する対象にしない。版を固定して CDN から取る。
@@ -135,7 +135,15 @@ async function createWllama(config, onProgress) {
       };
       // 生のプロンプトはチャットテンプレートを通らない。GGUF にテンプレートが無いモデルを動かすための経路。
       if (raw) await wllama.createCompletion({ prompt: renderPrompt(messages, config.promptFormat), ...params });
-      else await wllama.createChatCompletion({ messages, ...params });
+      else {
+        await wllama.createChatCompletion({
+          messages,
+          // 指定したときだけ渡す。cache_prompt=false は、直前の入力との共通部分の再利用を止める(出力が履歴に依らないかの確認用)。
+          ...(config.cachePrompt === undefined ? {} : { cache_prompt: config.cachePrompt }),
+          ...(config.schema ? { response_format: { type: 'json_schema', json_schema: { name: 'candidates', schema: CANDIDATES_SCHEMA } } } : {}),
+          ...params,
+        });
+      }
       const finished = now();
       return {
         text,

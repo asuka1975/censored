@@ -5,6 +5,17 @@ export const CANDIDATE_COUNT = 3;
 export const DEFAULT_MAX_TOKENS = 640;
 
 /**
+ * 出力の形(文字列がちょうど 3 つの配列)を、生成の段階で強制する JSON スキーマ(wllama の response_format 用)。
+ * WHY NOT: maxLength を付けない。文法が大きくなり、WASM で遅くなるかもしれない。140 書記素の判定は、これまでどおり出力の後で行う。
+ */
+export const CANDIDATES_SCHEMA = {
+  type: 'array',
+  minItems: CANDIDATE_COUNT,
+  maxItems: CANDIDATE_COUNT,
+  items: { type: 'string', minLength: 1 },
+};
+
+/**
  * 計測の構成。docs/architecture/browser-llm-evaluation.md の表の # と対応する。
  * WHY NOT: リポジトリ名は推測を含む。確認できたのは onnx-community/Qwen3-0.6B-ONNX だけ(transformers.js の例)。
  * 存在しなければ読み込みが失敗し、結果に記録される。repo= と file= で差し替える。
@@ -74,11 +85,17 @@ export function parseConfig(search, topicIds) {
   const noThinkParam = flag('no_think');
   const jinjaParam = flag('jinja');
   const useCacheParam = flag('use_cache');
+  const cachePromptParam = flag('cache_prompt');
+  const schemaParam = flag('schema');
   const chatTemplate = q.get('chat_template');
   if (chatTemplate === '') errors.push('chat_template が空');
   const promptFormat = q.get('prompt_format') ?? 'chat';
   if (!PROMPT_FORMATS.includes(promptFormat)) errors.push(`prompt_format は ${PROMPT_FORMATS.join(' か ')}(受け取った値: ${promptFormat})`);
   else if (promptFormat !== 'chat' && preset?.runtime !== 'wllama') errors.push('prompt_format は wllama の構成(config=4〜6)でだけ使える');
+  // WHY NOT: cache_prompt と schema は、チャットの経路(wllama)だけで受け取る。生のプロンプトと transformers.js には、同じ指定が無い。
+  for (const [name, value] of [['cache_prompt', cachePromptParam], ['schema', schemaParam]]) {
+    if (value !== null && (preset?.runtime !== 'wllama' || promptFormat !== 'chat')) errors.push(`${name} は wllama の構成(config=4〜6)の、prompt_format=chat でだけ使える`);
+  }
   const download = q.get('download') ?? 'library';
   if (!DOWNLOADS.includes(download)) errors.push(`download は ${DOWNLOADS.join(' か ')}(受け取った値: ${download})`);
   else if (download !== 'library' && preset?.runtime !== 'wllama') errors.push('download は wllama の構成(config=4〜6)でだけ使える');
@@ -105,6 +122,8 @@ export function parseConfig(search, topicIds) {
       threads,
       jinja: jinjaParam === null ? undefined : Boolean(Number(jinjaParam)),
       useCache: useCacheParam === null ? undefined : Boolean(Number(useCacheParam)),
+      cachePrompt: cachePromptParam === null ? undefined : Boolean(Number(cachePromptParam)),
+      schema: schemaParam !== null && Boolean(Number(schemaParam)),
       chatTemplate: chatTemplate ?? undefined,
       promptFormat,
       download,
