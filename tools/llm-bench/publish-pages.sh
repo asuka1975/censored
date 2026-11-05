@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 計測ページと診断ページ(tools/llm-bench の静的ファイル 7 つ)を gh-pages ブランチへ公開する。
+# 計測ページと診断ページ(tools/llm-bench の静的ファイル 8 つと、版を示す version.mjs)を gh-pages ブランチへ公開する。
 #   tools/llm-bench/publish-pages.sh            公開する
 #   PAGES_DRY_RUN=1 tools/llm-bench/publish-pages.sh   中身を表示するだけで、push しない
 # HEAD にコミットされた版を使い、作業ツリーの未コミットの変更は見ない。
@@ -10,7 +10,7 @@
 set -euo pipefail
 
 BRANCH="${PAGES_BRANCH:-gh-pages}"
-FILES=(index.html bench.mjs engines.mjs lib.mjs topics.mjs probe.html probe.mjs)
+FILES=(index.html bench.mjs engines.mjs lib.mjs topics.mjs download.mjs probe.html probe.mjs)
 
 cd "$(git rev-parse --show-toplevel)"
 source_sha="$(git rev-parse --short HEAD)"
@@ -23,6 +23,8 @@ tree="$(
   for f in "${FILES[@]}"; do
     git update-index --add --cacheinfo "100644,$(git rev-parse "HEAD:tools/llm-bench/$f"),$f"
   done
+  # どの版が配信されたかを、結果から分かるようにする(Pages のキャッシュで、古い版が返ることがある)。
+  git update-index --add --cacheinfo "100644,$(printf 'export const VERSION = "%s";\n' "$source_sha" | git hash-object -w --stdin),version.mjs"
   # Jekyll の処理を止める。
   git update-index --add --cacheinfo "100644,$(git hash-object -w --stdin </dev/null),.nojekyll"
   git write-tree

@@ -3,6 +3,8 @@ import { createEngine } from './engines.mjs';
 import { firstFailure, leakedTerms, MAX_CONSECUTIVE_FAILURES, parseConfig, RATING_AXES, summarizeRuns, trailingFailures, validateOutput } from './lib.mjs';
 import { buildMessages, TOPICS } from './topics.mjs';
 
+// 公開(gh-pages)では version.mjs が版を示す。ローカルのサーバーには無いので、'local' にする。
+const VERSION = await import('./version.mjs').then((m) => m.VERSION, () => 'local');
 const $ = (id) => document.getElementById(id);
 const parsed = parseConfig(location.search, TOPICS.map((t) => t.id));
 const runs = [];
@@ -187,7 +189,7 @@ async function runBench(config) {
   await engine?.close().catch(() => {});
   await wakeLock?.release().catch(() => {});
   if (hiddenAt !== null) { visibility.hiddenSeconds += (performance.now() - hiddenAt) / 1000; hiddenAt = null; }
-  result = { schema: 'censored-llm-bench/1', finishedAt: new Date().toISOString(), config, engine: engineInfo, env, load, memory, visibility: { ...visibility }, aborted, runs };
+  result = { schema: 'censored-llm-bench/1', harnessVersion: VERSION, finishedAt: new Date().toISOString(), config, engine: engineInfo, env, load, memory, visibility: { ...visibility }, aborted, runs };
   setStatus(load.error === null ? (aborted ?? '終わった。結果を保存して、要約を渡す。') : `読み込みに失敗した: ${load.error.split('\n')[0]}`);
   $('start').disabled = false;
   $('stop').disabled = true;

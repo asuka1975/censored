@@ -104,7 +104,7 @@ last_reviewed: 2026-11-04
 - **量子化の指定。** transformers.js の `dtype` は q4 が既定。WebGPU で `shader-f16` が使える端末(結果の `env.adapter.shaderF16`)では、`dtype=q4f16` も測る価値がある。wllama は `quant=Q4_K_M` が既定。
 - **Qwen3 の思考。** Qwen3 の構成は、利用者の発言の末尾に `/no_think` を付けて思考を止める。LFM3 には付けない。それでも `<think>` が出たときは取り除いて判定し、`hadThinking` に記録する。
 - **チャットテンプレートが無い GGUF。** #6 のように `createChatCompletion` が落ちるときは、`prompt_format=chatml` を付けて測り直せる(wllama の構成だけ)。LFM3 の本来の形式を確かめるまで、この結果は参考値として扱う。
-- **キャッシュを切る指定と、メモリだけの読み込み。** `use_cache=0` は、transformers.js では `env.useBrowserCache` と `env.useWasmCache` を切り、ブラウザのキャッシュに保存しない。**wllama では、保存を避けられない**: `useCache: false` は「キャッシュを探さず、ダウンロードし直す」だけで、ダウンロードしたファイルは OPFS に書かれ、そこから読み戻される。OPFS が使えない端末で wllama を動かすには、`download=memory` を付ける(wllama の構成だけ)。道具が自分でダウンロードして、メモリ上の Blob を `loadModel` に渡す。メモリの使用量が増え(iPhone で足りるかは未確認)、毎回ダウンロードし直すので、温間は測れない。結果の `load.storageQuotaBytes` に、ブラウザが報告するストレージの上限が出る。
+- **キャッシュを切る指定と、メモリだけの読み込み。** `use_cache=0` は、transformers.js では `env.useBrowserCache` と `env.useWasmCache` を切り、ブラウザのキャッシュに保存しない。**wllama では、保存を避けられない**: `useCache: false` は「キャッシュを探さず、ダウンロードし直す」だけで、ダウンロードしたファイルは OPFS に書かれ、そこから読み戻される。OPFS が使えない端末で wllama を動かすには、`download=memory` を付ける(wllama の構成だけ)。道具が自分でダウンロードして、メモリ上の Blob を `loadModel` に渡す。メモリの使用量が増え(iPhone で足りるかは未確認)、切れたら取得済みの位置から `Range` で再開し(最大 30 回)、毎回ダウンロードし直すので、温間は測れない。結果の `load.storageQuotaBytes` に、ブラウザが報告するストレージの上限が出る。
 - **スマートフォン。** GitHub Pages で開く(上の節)。Wi-Fi に接続し、測定の間は画面を点けたままにする。道具は画面を点けたままにする要求(Screen Wake Lock)を出すが、拒否されることがある。結果の `env.wakeLock` と、`visibility`(ページが隠れた回数と秒数)で確かめられる。最も小さい構成(#1 か #4)で動くことを先に確かめてから、大きい構成に進む。読み込みが途中で失敗したときは、結果の `engine.lastFile` が、直前にダウンロードしていたファイルを示す(transformers.js のみ)。
 
 ### 道具のテストと削除
@@ -244,6 +244,9 @@ node --test tools/llm-bench/test/*.test.mjs
 - `use_cache=0` を付けて #4 を測り直しても、同じ失敗が出た(2.1 秒後、ダウンロードは 0 バイト、`UnknownError` の同じ文面。操作の直後に失敗した)。**これは「保存が原因ではない」ことを示さない。** wllama の `useCache: false` は保存を避けない(wllama 3.8.1 のコードで確認した。下の注意を見る)。また、`UnknownError` の文面は、WebIDL が定めた汎用の説明で、どの API が投げても同じである。ストレージ層の文面とは言えない(前の版で、そう書いたのは誤りだった)。
 - このときブラウザが報告したストレージの上限(`storageQuotaBytes`)は 1,048,576,000 バイト(約 1 GB)だった。1 GB を超えるモデル(#5 の 1107 MB、#3 の 1315 MB)は、この環境では保存できない可能性がある。#4 の約 397 MB は収まるので、#4 の失敗の原因ではない。
 - **診断ページ(端末 B、2026-11-05)で、OPFS へのワーカーからの書き込みが、最初の 64 MiB の試行で、8 ミリ秒後に `UnknownError` で失敗した。** ワーカーの起動、`WebAssembly.Memory`(2048 MiB まで)、WebGPU のバッファ(1024 MiB まで)、取得先への接続は通った。環境は `jspi: false`、`memory64: false`、`crossOriginIsolated: false`、ストレージの上限 1000 MiB、使用量 17 MiB、`persisted: false`。wllama は iPhone の Safari でモデルを OPFS のワーカーに書くので、**#4 の失敗の原因は OPFS である可能性が高い**(確定ではない)。#4 の失敗までの時間(1 回目 20.4 秒、2 回目 2.1 秒)は、診断の取得先への接続の時間(1 MiB の取得に 20.3 秒)と整合する。ネットワークの待ちのあとに OPFS で失敗している、という読みになる。OPFS のどの操作で失敗したかは、この診断の版にはまだ区別が無く、不明。
+- 診断ページを もう一度実行しても、OPFS の失敗は同じだった(最初の 64 MiB の試行で、8 ミリ秒後に `UnknownError`)。ただし、このときの結果は古い版の診断ページ(`stage` も、Cache Storage と IndexedDB の項目も無い)で、Pages のキャッシュで古い版が返っていた。取得先のファイルの先頭 1 MiB の取得は、1 回目 20.3 秒、2 回目 3.5 秒で、接続の速さは大きく変わる。
+- **`download=memory` で #4 を測ると、OPFS の壁を越えた。** ダウンロードが 228,584,055 / 396,705,472 バイト(58%)まで進み、1381.7 秒後に `TypeError: Load failed` で失敗した(平均 0.165 MB/s、モバイル回線)。画面を点けたままにする要求は取れ、ページが隠れた回数は 0。したがって、OPFS が #4 の最初の失敗の原因である見立ては支持された。**次の失敗は、長いダウンロードの途中の切断である。** #3(36% で失敗、0.46 MB/s)と合わせて、モバイル回線で数百 MB を取る長い通信が途中で切れる結果が 2 回出た。ただし、この端末で `loadModel([Blob])` が動くかは、そこまで届いておらず不明。
+- 道具に、切れても取得済みの位置から `Range` で再開するダウンロード(`download.mjs`)を足した。結果の `engine.downloadFailures` に、切れた位置と理由が残る。結果の `harnessVersion` で、どの版が動いたかが分かる(Pages のキャッシュで古い版が返ることがあるため)。
 - #6 は、モデルの読み込みは成功したが、最初の生成で wllama が abort し(`common_chat_templates_get_caps` ← `oaicompat_chat_params_parse`)、以降は「クラッシュ済み」で全件失敗した。`jinja=0&chat_template=chatml` を付けても、同じ abort で 3 回続けて失敗して止まった。診断を足して測り直すと、llama.cpp は `b11364-46ca246`、`getChatTemplate()` は空だった。**wllama から見て、この GGUF にはチャットテンプレートが無い**(診断の初版は「無い」と「空」を区別していなかったので、`null` と書くよう直した)。チャットテンプレートを要求する経路(`createChatCompletion`)がテンプレートの無いモデルで落ちる、という説明が付くが、llama.cpp の内部で確かめたわけではない。モデルが動かないと決めるのは早い。
 - 生のプロンプトで生成する経路(`prompt_format=chatml`、wllama の `createCompletion`)を足した。チャットテンプレートを通らない。**LFM3 の本来のプロンプト形式は確かめていない。** ChatML 風の形式で測ると、形式が違う場合に LFM3 の質を低く測るので、この経路の結果は LFM3 の評価の結論には使わないと決めていた。
 - その経路でも失敗した: `RangeError: Invalid typed array length: 1163217991`。この数値は 16 進で `0x45554c47`、ASCII で `GLUE` で、wllama の JS と wasm の間のメッセージの先頭の印である。wllama のワーカーは、出力の長さを入力バッファの先頭 4 バイトから読む(`llama-cpp.js` の `runAction`)。ネイティブの処理が長さを書かずに戻ると、先頭の印が長さとして読まれる。**生のプロンプトの経路でも、ネイティブ側が出力を返せずに失敗している**とみられる。原因を示すメッセージは JS に出ないので、特定できていない。#6 は、wllama 3.8.1(llama.cpp `b11364-46ca246`)では、どちらの経路でも生成できなかった。
@@ -282,7 +285,8 @@ node --test tools/llm-bench/test/*.test.mjs
 
 - WebGPU の経路。端末 A はアダプターがあるが、計測していない。ここまでの数値はすべて WASM である。
 - マルチスレッドの WASM(`--isolation require-corp`)。
-- スマートフォンでの動作。#3(WebGPU)と #4(WASM)を iPhone で試したが、どちらも読み込みで失敗した。#4 は OPFS の失敗である可能性が高いが、OPFS のどの操作か、なぜ失敗するか(プライベートブラウズなどの設定かどうか)は不明。`download=memory` で OPFS を避けて動くかは未試行。動作の測定は未。
+- スマートフォンで `loadModel([Blob])` が動くか(メモリの上限を含む)。再開つきのダウンロードで、モバイル回線の切断を越えられるか。
+- スマートフォンでの動作。#3(WebGPU)と #4(WASM)を iPhone で試したが、どちらも読み込みで失敗した。#4 は OPFS の失敗である可能性が高いが、OPFS のどの操作か、なぜ失敗するか(プライベートブラウズなどの設定かどうか)は不明。`download=memory` では OPFS を避けたが、ダウンロードの途中で切れた。モデルの読み込みと生成の測定は未。
 - #2 と #3 を WebGPU で動かせるか。#3 を別の量子化(`dtype=q8`)で WASM で動かせるか。#2 のダウンロード量。
 - #6 の失敗の原因。2 つの経路とも失敗した。ネイティブのログ(DevTools のコンソール)が手がかり。LFM3 本来のプロンプト形式。
 - 候補の質の採点(穏当さ、意味、自然さ、違い)。メモリの実測。2 回目の読み込み時間。
