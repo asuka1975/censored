@@ -65,8 +65,8 @@ last_reviewed: 2026-11-04
 モデルを読み込む前に失敗する端末(スマートフォンなど)では、診断ページが、読み込みの前提の能力を 1 つずつ試して、どこで失敗するかを残す。ライブラリは使わない。
 
 - URL: `https://asuka1975.github.io/censored/probe.html`(ローカルでは `http://localhost:8080/probe.html`)。
-- 試すもの: 環境(`jspi`、`memory64`、`crossOriginIsolated`)、ストレージの見積り(使用量と上限)、取得先への接続(API と、ファイルの先頭 1 MiB)、モジュールのワーカー、OPFS(ワーカーで 64、256、512 MiB を書く)、`WebAssembly.Memory`(256、512、1024、2048 MiB を、試行ごとにワーカーで確保する)、WebGPU(アダプターとバッファの確保)。
-- 大きい方から失敗したときは、`reachedMiB`(通った大きさ)と `failedAtMiB`(最初に失敗した大きさ)と `error` が出る。大きさは `opfs_mib=64,256`、`mem_mib=256,512`、`gpu_mib=256` で変えられる。
+- 試すもの: 環境(`jspi`、`memory64`、`crossOriginIsolated`)、ストレージの見積り(使用量と上限)、取得先への接続(API と、ファイルの先頭 1 MiB)、モジュールのワーカー、OPFS(ワーカーで 64、256、512 MiB を書く。失敗したときは、どの操作か(`createSyncAccessHandle` など)が `error` の先頭に出る)、OPFS(メインスレッド)、Cache Storage への書き込み(16、64、256 MiB)、IndexedDB への書き込み(16、64、256 MiB)、`WebAssembly.Memory`(256、512、1024、2048 MiB を、試行ごとにワーカーで確保する)、WebGPU(アダプターとバッファ)。
+- 大きい方から失敗したときは、`reachedMiB`(通った大きさ)と `failedAtMiB`(最初に失敗した大きさ)と `error` が出る。大きさは `opfs_mib=64,256`、`mem_mib=256,512`、`gpu_mib=256`、`cache_mib=16,64`、`idb_mib=16,64` で変えられる。
 - 「結果をコピー」を押して、貼る。
 
 ### 1 つの構成を測る(ローカルのサーバー)
@@ -104,7 +104,7 @@ last_reviewed: 2026-11-04
 - **量子化の指定。** transformers.js の `dtype` は q4 が既定。WebGPU で `shader-f16` が使える端末(結果の `env.adapter.shaderF16`)では、`dtype=q4f16` も測る価値がある。wllama は `quant=Q4_K_M` が既定。
 - **Qwen3 の思考。** Qwen3 の構成は、利用者の発言の末尾に `/no_think` を付けて思考を止める。LFM3 には付けない。それでも `<think>` が出たときは取り除いて判定し、`hadThinking` に記録する。
 - **チャットテンプレートが無い GGUF。** #6 のように `createChatCompletion` が落ちるときは、`prompt_format=chatml` を付けて測り直せる(wllama の構成だけ)。LFM3 の本来の形式を確かめるまで、この結果は参考値として扱う。
-- **キャッシュに保存しない。** `use_cache=0` を付けると、モデルをブラウザのストレージに保存せず、メモリだけで読み込む(wllama は `useCache: false`、transformers.js は `env.useBrowserCache` と `env.useWasmCache` を切る)。保存の失敗を切り分ける実験で、毎回ダウンロードし直すので、温間の測定には使えない。結果の `load.storageQuotaBytes` に、ブラウザが報告するストレージの上限が出る。
+- **キャッシュを切る指定と、メモリだけの読み込み。** `use_cache=0` は、transformers.js では `env.useBrowserCache` と `env.useWasmCache` を切り、ブラウザのキャッシュに保存しない。**wllama では、保存を避けられない**: `useCache: false` は「キャッシュを探さず、ダウンロードし直す」だけで、ダウンロードしたファイルは OPFS に書かれ、そこから読み戻される。OPFS が使えない端末で wllama を動かすには、`download=memory` を付ける(wllama の構成だけ)。道具が自分でダウンロードして、メモリ上の Blob を `loadModel` に渡す。メモリの使用量が増え(iPhone で足りるかは未確認)、毎回ダウンロードし直すので、温間は測れない。結果の `load.storageQuotaBytes` に、ブラウザが報告するストレージの上限が出る。
 - **スマートフォン。** GitHub Pages で開く(上の節)。Wi-Fi に接続し、測定の間は画面を点けたままにする。道具は画面を点けたままにする要求(Screen Wake Lock)を出すが、拒否されることがある。結果の `env.wakeLock` と、`visibility`(ページが隠れた回数と秒数)で確かめられる。最も小さい構成(#1 か #4)で動くことを先に確かめてから、大きい構成に進む。読み込みが途中で失敗したときは、結果の `engine.lastFile` が、直前にダウンロードしていたファイルを示す(transformers.js のみ)。
 
 ### 道具のテストと削除
@@ -239,11 +239,11 @@ node --test tools/llm-bench/test/*.test.mjs
 - 「有効な出力」は、形式が合うかだけを見る。内容の良し悪しを表さない(下の観察を見る)。
 - #2(transformers.js、Qwen3-1.7B の ONNX q4、WASM)は、読み込みで `RangeError: The ArrayBuffer/ArrayBufferView size exceeds the supported range.` で失敗した。モデルのファイルが、WASM(32 ビットのメモリ)で確保できる大きさを超えたとみられる。ダウンロード量は記録に無く、確かめていない。WebGPU の経路は未試行。
 - #3(transformers.js、LFM3-1.7B の ONNX q4、WASM)は、`Can't create a session. ERROR_CODE: 9, ERROR_MESSAGE: Could not find an implementation for GatherBlockQuantized(1) node with name '/model/embed_tokens/Gather_Quant'` で失敗した。モデルの埋め込み層が 4 ビット量子化の演算(GatherBlockQuantized)を使い、WASM の実行環境(onnxruntime-web)にその実装が無い、という読みになる。取得先 `onnx-community/LFM3-1.7B-ONNX` は実在し、セッションの作成までは進んだ。WebGPU の経路と、別の量子化(`dtype=q8`)は未試行。
-- #3 を iPhone(端末 B)の WebGPU で測ったところ、ダウンロードが 470 MB / 1315 MB(36%)で止まり、1018 秒後に `TypeError: Load failed` で失敗した(約 0.46 MB/s。回線はモバイル回線)。これは Safari の fetch がネットワークの層で失敗したときの一般的な文面で、ページは生きていた。原因は特定できていない。回線の断や遅さ、画面のロックやアプリの切り替えによるダウンロードの中断などが考えられるが、確かめていない。この測定の道具には、画面を点けたままにする処理と、ページが隠れた回数と時間の記録が無かった。LFM3 の ONNX q4 の合計は、ランタイムの報告で 1315 MB。この測定は、LFM3 が WebGPU の実行環境で動くか(#3 の WASM の失敗は演算の未実装だった)の答えにならない。デスクトップの WebGPU で測る。
+- #3 を iPhone(端末 B)の WebGPU で測ったところ、ダウンロードが 470 MB / 1315 MB(36%)で止まり、1018 秒後に `TypeError: Load failed` で失敗した(約 0.46 MB/s。回線はモバイル回線)。診断ページは、OPFS の失敗を示した(下の観察)。#3 の `Load failed` が OPFS と関係するかは、transformers.js が Cache Storage を使うため、分からない。これは Safari の fetch がネットワークの層で失敗したときの一般的な文面で、ページは生きていた。原因は特定できていない。回線の断や遅さ、画面のロックやアプリの切り替えによるダウンロードの中断などが考えられるが、確かめていない。この測定の道具には、画面を点けたままにする処理と、ページが隠れた回数と時間の記録が無かった。LFM3 の ONNX q4 の合計は、ランタイムの報告で 1315 MB。この測定は、LFM3 が WebGPU の実行環境で動くか(#3 の WASM の失敗は演算の未実装だった)の答えにならない。デスクトップの WebGPU で測る。
 - #4 を iPhone(端末 B)の WASM で測ったところ、20.4 秒後に `UnknownError: The operation failed for an unknown transient reason (e.g. out of memory).` で読み込みに失敗した。ダウンロードのバイト数は 0。この測定では、画面を点けたままにする要求が取れ(`wakeLock: acquired`)、ページが隠れた回数は 0 だった。したがって、前回の #3(`Load failed`)の原因の候補だった画面ロックやアプリの切り替えは、今回の失敗の原因ではない。
-- 保存を切る指定(`use_cache=0`)で #4 を測り直しても、同じ失敗が出た(2.1 秒後、ダウンロードは 0 バイト、`UnknownError` の同じ文面。操作の直後に失敗した)。**「モデルをストレージに保存する段階で失敗している」という見立ては、支持されなかった。** この文面は、WebIDL が `UnknownError` に定めた汎用の説明で、どの API が投げても同じである。ストレージ層の文面とは言えない(前の版で、そう書いたのは誤りだった)。
+- `use_cache=0` を付けて #4 を測り直しても、同じ失敗が出た(2.1 秒後、ダウンロードは 0 バイト、`UnknownError` の同じ文面。操作の直後に失敗した)。**これは「保存が原因ではない」ことを示さない。** wllama の `useCache: false` は保存を避けない(wllama 3.8.1 のコードで確認した。下の注意を見る)。また、`UnknownError` の文面は、WebIDL が定めた汎用の説明で、どの API が投げても同じである。ストレージ層の文面とは言えない(前の版で、そう書いたのは誤りだった)。
 - このときブラウザが報告したストレージの上限(`storageQuotaBytes`)は 1,048,576,000 バイト(約 1 GB)だった。1 GB を超えるモデル(#5 の 1107 MB、#3 の 1315 MB)は、この環境では保存できない可能性がある。#4 の約 397 MB は収まるので、#4 の失敗の原因ではない。
-- iPhone の #4 の失敗の原因は、特定できていない。wllama のコードには、JSPI(`WebAssembly.Suspending`)が無い環境で、互換ビルド(別の wasm とワーカーを CDN から取る)を使う処理がある。iPhone がそうかは、診断ページ(下の節)の `jspi` で分かる。ほかに、ワーカーの起動、OPFS、`WebAssembly.Memory` の確保、WebGPU の初期化、取得先への接続(CORS を含む)が候補で、診断ページが 1 つずつ試す。
+- **診断ページ(端末 B、2026-11-05)で、OPFS へのワーカーからの書き込みが、最初の 64 MiB の試行で、8 ミリ秒後に `UnknownError` で失敗した。** ワーカーの起動、`WebAssembly.Memory`(2048 MiB まで)、WebGPU のバッファ(1024 MiB まで)、取得先への接続は通った。環境は `jspi: false`、`memory64: false`、`crossOriginIsolated: false`、ストレージの上限 1000 MiB、使用量 17 MiB、`persisted: false`。wllama は iPhone の Safari でモデルを OPFS のワーカーに書くので、**#4 の失敗の原因は OPFS である可能性が高い**(確定ではない)。#4 の失敗までの時間(1 回目 20.4 秒、2 回目 2.1 秒)は、診断の取得先への接続の時間(1 MiB の取得に 20.3 秒)と整合する。ネットワークの待ちのあとに OPFS で失敗している、という読みになる。OPFS のどの操作で失敗したかは、この診断の版にはまだ区別が無く、不明。
 - #6 は、モデルの読み込みは成功したが、最初の生成で wllama が abort し(`common_chat_templates_get_caps` ← `oaicompat_chat_params_parse`)、以降は「クラッシュ済み」で全件失敗した。`jinja=0&chat_template=chatml` を付けても、同じ abort で 3 回続けて失敗して止まった。診断を足して測り直すと、llama.cpp は `b11364-46ca246`、`getChatTemplate()` は空だった。**wllama から見て、この GGUF にはチャットテンプレートが無い**(診断の初版は「無い」と「空」を区別していなかったので、`null` と書くよう直した)。チャットテンプレートを要求する経路(`createChatCompletion`)がテンプレートの無いモデルで落ちる、という説明が付くが、llama.cpp の内部で確かめたわけではない。モデルが動かないと決めるのは早い。
 - 生のプロンプトで生成する経路(`prompt_format=chatml`、wllama の `createCompletion`)を足した。チャットテンプレートを通らない。**LFM3 の本来のプロンプト形式は確かめていない。** ChatML 風の形式で測ると、形式が違う場合に LFM3 の質を低く測るので、この経路の結果は LFM3 の評価の結論には使わないと決めていた。
 - その経路でも失敗した: `RangeError: Invalid typed array length: 1163217991`。この数値は 16 進で `0x45554c47`、ASCII で `GLUE` で、wllama の JS と wasm の間のメッセージの先頭の印である。wllama のワーカーは、出力の長さを入力バッファの先頭 4 バイトから読む(`llama-cpp.js` の `runAction`)。ネイティブの処理が長さを書かずに戻ると、先頭の印が長さとして読まれる。**生のプロンプトの経路でも、ネイティブ側が出力を返せずに失敗している**とみられる。原因を示すメッセージは JS に出ないので、特定できていない。#6 は、wllama 3.8.1(llama.cpp `b11364-46ca246`)では、どちらの経路でも生成できなかった。
@@ -282,7 +282,7 @@ node --test tools/llm-bench/test/*.test.mjs
 
 - WebGPU の経路。端末 A はアダプターがあるが、計測していない。ここまでの数値はすべて WASM である。
 - マルチスレッドの WASM(`--isolation require-corp`)。
-- スマートフォンでの動作。#3(WebGPU)と #4(WASM)を iPhone で試したが、どちらも読み込みで失敗した。#4 の失敗の原因は未特定で、診断ページの結果を待っている。動作の測定は未。
+- スマートフォンでの動作。#3(WebGPU)と #4(WASM)を iPhone で試したが、どちらも読み込みで失敗した。#4 は OPFS の失敗である可能性が高いが、OPFS のどの操作か、なぜ失敗するか(プライベートブラウズなどの設定かどうか)は不明。`download=memory` で OPFS を避けて動くかは未試行。動作の測定は未。
 - #2 と #3 を WebGPU で動かせるか。#3 を別の量子化(`dtype=q8`)で WASM で動かせるか。#2 のダウンロード量。
 - #6 の失敗の原因。2 つの経路とも失敗した。ネイティブのログ(DevTools のコンソール)が手がかり。LFM3 本来のプロンプト形式。
 - 候補の質の採点(穏当さ、意味、自然さ、違い)。メモリの実測。2 回目の読み込み時間。

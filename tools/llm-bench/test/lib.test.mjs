@@ -121,6 +121,14 @@ test('構成: use_cache は指定したときだけ渡し、0 と 1 だけを受
   assert.equal(parse('?config=4&backend=wasm&use_cache=2').ok, false);
 });
 
+test('ダウンロード方法: 既定は library で、memory は wllama の構成でだけ指定できる', () => {
+  assert.equal(parse('?config=4&backend=wasm').config.download, 'library');
+  assert.equal(parse('?config=4&backend=wasm&download=memory').config.download, 'memory');
+  assert.equal(parse('?config=4&backend=wasm&download=disk').ok, false);
+  assert.equal(parse('?config=1&backend=wasm&download=memory').ok, false);
+  assert.equal(parse('?config=1&backend=wasm&download=library').ok, true);
+});
+
 test('最初の失敗: 例外で失敗した最初の実行の本文を返し、無ければ null、長いものは切る', () => {
   assert.equal(firstFailure([]), null);
   assert.equal(firstFailure([{ failed: false, raw: 'a' }]), null);
