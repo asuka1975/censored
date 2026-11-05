@@ -22,3 +22,4 @@ last_reviewed: 2026-11-02
 | [0009](0009-grapheme-counting.md) | 書記素単位の文字数の数え方 | Superseded by ADR-0010 |
 | [0010](0010-grapheme-counting-in-infra.md) | 書記素の数え方を infra に置き、ICU の IO 版を保持付きで呼ぶ | Accepted |
 | [0011](0011-idempotent-post-creation.md) | 投稿の作成の冪等性を、作者と要求の識別子の一意制約で実現する | Proposed |
+| [0012](0012-browser-llm-runtime.md) | ブラウザ内 LLM の実行基盤は、WebGPU と WASM を 1 つで扱えるものに絞り、計測して決める | Proposed |
