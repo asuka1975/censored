@@ -12,6 +12,11 @@ const now = () => performance.now();
 
 async function createTransformersJs(config, onProgress) {
   const tjs = await import(TRANSFORMERS_URL);
+  // ストレージへの保存を切り分けるための指定。切ると、毎回ダウンロードし直す(温間は測れない)。
+  if (config.useCache === false) {
+    tjs.env.useBrowserCache = false;
+    tjs.env.useWasmCache = false;
+  }
   let generator = null;
   // 読み込みが途中で失敗したとき、どのファイルの途中だったかを残す(ブラウザの文面は URL を含まない)。
   let lastFile = null;
@@ -79,6 +84,7 @@ async function createWllama(config, onProgress) {
         { repo: config.repo, file: config.file, quant: config.file ? undefined : config.quant },
         {
           progressCallback: ({ loaded, total }) => onProgress({ loaded, total }),
+          ...(config.useCache === undefined ? {} : { useCache: config.useCache }),
           n_ctx: 2048,
           ...(config.backend === 'wasm' ? { n_gpu_layers: 0 } : {}),
           ...(config.threads ? { n_threads: config.threads } : {}),

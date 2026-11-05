@@ -114,6 +114,13 @@ test('プロンプト形式: chatml は役割ごとに区切り、最後に assi
   assert.throws(() => renderPrompt(messages, 'chat'), /未対応のプロンプト形式/);
 });
 
+test('構成: use_cache は指定したときだけ渡し、0 と 1 だけを受け取る', () => {
+  assert.equal(parse('?config=4&backend=wasm').config.useCache, undefined);
+  assert.equal(parse('?config=4&backend=wasm&use_cache=0').config.useCache, false);
+  assert.equal(parse('?config=4&backend=wasm&use_cache=1').config.useCache, true);
+  assert.equal(parse('?config=4&backend=wasm&use_cache=2').ok, false);
+});
+
 test('最初の失敗: 例外で失敗した最初の実行の本文を返し、無ければ null、長いものは切る', () => {
   assert.equal(firstFailure([]), null);
   assert.equal(firstFailure([{ failed: false, raw: 'a' }]), null);
