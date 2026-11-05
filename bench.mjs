@@ -1,6 +1,6 @@
 // 計測ページの制御。純粋な判定は lib.mjs に置き、ここは DOM とブラウザ API だけを扱う。
 import { createEngine } from './engines.mjs';
-import { firstFailure, leakedTerms, MAX_CONSECUTIVE_FAILURES, parseConfig, RATING_AXES, summarizeRuns, trailingFailures, validateOutput } from './lib.mjs';
+import { firstFailure, leakedTerms, MAX_CONSECUTIVE_FAILURES, parseConfig, RATING_AXES, storageWarning, summarizeRuns, trailingFailures, validateOutput } from './lib.mjs';
 import { buildMessages, TOPICS } from './topics.mjs';
 
 // 公開(gh-pages)では version.mjs が版を示す。ローカルのサーバーには無いので、'local' にする。
@@ -12,6 +12,16 @@ let stopRequested = false;
 let result = null;
 
 const setStatus = (text) => { $('status').textContent = text; };
+
+// OPFS が開けるか。プライベートブラウズなどで使えないと、wllama の既定の読み込みが失敗する。
+async function opfsStatus() {
+  try {
+    await navigator.storage.getDirectory();
+    return 'ok';
+  } catch (e) {
+    return `${e?.name ?? 'Error'}: ${e?.message ?? e}`;
+  }
+}
 
 async function collectEnv() {
   const env = {
@@ -128,7 +138,9 @@ async function runBench(config) {
   $('stop').disabled = false;
   // 利用者の操作の直後に取る(操作から時間が経つと、要求が拒否されうる)。
   const wakeLockStatus = await acquireWakeLock();
-  const env = { ...(await collectEnv()), wakeLock: wakeLockStatus };
+  const env = { ...(await collectEnv()), wakeLock: wakeLockStatus, opfs: await opfsStatus() };
+  const warning = storageWarning(config, env.opfs);
+  $('warning').textContent = warning ?? '';
   if (config.backend === 'webgpu' && !env.adapter) {
     setStatus('WebGPU のアダプターを取得できない。この端末では webgpu の経路を測れない(wasm で測り直す)。');
     $('start').disabled = false;
