@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  extractJsonArray, firstFailure, graphemeCount, leakedTerms, median, parseConfig, renderPrompt, stripThinking, summarizeRuns, trailingFailures, validateOutput,
+  extractJsonArray, firstFailure, graphemeCount, leakedTerms, median, parseConfig, renderPrompt, storageWarning, stripThinking, summarizeRuns, trailingFailures, validateOutput,
 } from '../lib.mjs';
 
 const IDS = [1, 2, 3];
@@ -127,6 +127,14 @@ test('ダウンロード方法: 既定は library で、memory は wllama の構
   assert.equal(parse('?config=4&backend=wasm&download=disk').ok, false);
   assert.equal(parse('?config=1&backend=wasm&download=memory').ok, false);
   assert.equal(parse('?config=1&backend=wasm&download=library').ok, true);
+});
+
+test('保存の警告: wllama が OPFS を使えない状態で、download=memory でないときだけ警告する', () => {
+  const wllama = { runtime: 'wllama', download: 'library' };
+  assert.match(storageWarning(wllama, 'UnknownError: x'), /OPFS が使えない\(UnknownError: x\).*download=memory/);
+  assert.equal(storageWarning(wllama, 'ok'), null);
+  assert.equal(storageWarning({ ...wllama, download: 'memory' }, 'UnknownError: x'), null);
+  assert.equal(storageWarning({ runtime: 'transformersjs', download: 'library' }, 'UnknownError: x'), null);
 });
 
 test('最初の失敗: 例外で失敗した最初の実行の本文を返し、無ければ null、長いものは切る', () => {

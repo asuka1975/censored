@@ -122,6 +122,15 @@ export function renderPrompt(messages, format) {
   return `${messages.map((m) => `<|im_start|>${m.role}\n${m.content}<|im_end|>\n`).join('')}<|im_start|>assistant\n`;
 }
 
+/**
+ * wllama は、モデルを OPFS に保存する。OPFS が使えないと、読み込みの途中で UnknownError になり、理由が読みにくい。
+ * iPhone の Safari は、プライベートブラウズで OPFS が使えない(通常のタブでは使えた)。使えないときの警告を返す。
+ */
+export function storageWarning(config, opfsStatus) {
+  if (config.runtime !== 'wllama' || config.download === 'memory' || opfsStatus === 'ok') return null;
+  return `OPFS が使えない(${opfsStatus})。プライベートブラウズの可能性がある。wllama はモデルを OPFS に保存するので、読み込みに失敗する。通常のタブで開くか、download=memory を付ける。`;
+}
+
 export function graphemeCount(text, segmenter = new Intl.Segmenter('ja', { granularity: 'grapheme' })) {
   let n = 0;
   for (const _ of segmenter.segment(text)) n += 1;
