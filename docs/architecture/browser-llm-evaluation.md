@@ -213,9 +213,11 @@ node --test tools/llm-bench/test/*.test.mjs
 - WASM は単一スレッド(wllama は `threads: 1` を報告)。transformers.js のスレッド数は、記録に無い。
 - メモリ(タスクマネージャーの値)と、候補の質の採点は、入れていない。
 - 「有効な出力」は、形式が合うかだけを見る。内容の良し悪しを表さない(下の観察を見る)。
-- #2、#3 は、エラーの文面を受け取っていないので、原因が分からない。
+- #2(transformers.js、Qwen3-1.7B の ONNX q4、WASM)は、読み込みで `RangeError: The ArrayBuffer/ArrayBufferView size exceeds the supported range.` で失敗した。モデルのファイルが、WASM(32 ビットのメモリ)で確保できる大きさを超えたとみられる。ダウンロード量は記録に無く、確かめていない。WebGPU の経路は未試行。
+- #3(transformers.js、LFM3-1.7B の ONNX q4、WASM)は、`Can't create a session. ERROR_CODE: 9, ERROR_MESSAGE: Could not find an implementation for GatherBlockQuantized(1) node with name '/model/embed_tokens/Gather_Quant'` で失敗した。モデルの埋め込み層が 4 ビット量子化の演算(GatherBlockQuantized)を使い、WASM の実行環境(onnxruntime-web)にその実装が無い、という読みになる。取得先 `onnx-community/LFM3-1.7B-ONNX` は実在し、セッションの作成までは進んだ。WebGPU の経路と、別の量子化(`dtype=q8`)は未試行。
 - #6 は、モデルの読み込みは成功したが、最初の生成で wllama が abort し(`common_chat_templates_get_caps` ← `oaicompat_chat_params_parse`)、以降は「クラッシュ済み」で全件失敗した。`jinja=0&chat_template=chatml` を付けても、同じ abort で 3 回続けて失敗して止まった。診断を足して測り直すと、llama.cpp は `b11364-46ca246`、`getChatTemplate()` は空だった。**wllama から見て、この GGUF にはチャットテンプレートが無い**(診断の初版は「無い」と「空」を区別していなかったので、`null` と書くよう直した)。チャットテンプレートを要求する経路(`createChatCompletion`)がテンプレートの無いモデルで落ちる、という説明が付くが、llama.cpp の内部で確かめたわけではない。モデルが動かないと決めるのは早い。
-- 生のプロンプトで生成する経路(`prompt_format=chatml`、wllama の `createCompletion`)を足した。チャットテンプレートを通らない。**LFM3 の本来のプロンプト形式は確かめていない。** ChatML 風の形式で測ると、形式が違う場合に LFM3 の質を低く測る。この経路の結果には形式を書き、LFM3 の評価の結論には使わない。
+- 生のプロンプトで生成する経路(`prompt_format=chatml`、wllama の `createCompletion`)を足した。チャットテンプレートを通らない。**LFM3 の本来のプロンプト形式は確かめていない。** ChatML 風の形式で測ると、形式が違う場合に LFM3 の質を低く測るので、この経路の結果は LFM3 の評価の結論には使わないと決めていた。
+- その経路でも失敗した: `RangeError: Invalid typed array length: 1163217991`。この数値は 16 進で `0x45554c47`、ASCII で `GLUE` で、wllama の JS と wasm の間のメッセージの先頭の印である。wllama のワーカーは、出力の長さを入力バッファの先頭 4 バイトから読む(`llama-cpp.js` の `runAction`)。ネイティブの処理が長さを書かずに戻ると、先頭の印が長さとして読まれる。**生のプロンプトの経路でも、ネイティブ側が出力を返せずに失敗している**とみられる。原因を示すメッセージは JS に出ないので、特定できていない。#6 は、wllama 3.8.1(llama.cpp `b11364-46ca246`)では、どちらの経路でも生成できなかった。
 
 ## 観察(途中)
 
@@ -241,6 +243,8 @@ node --test tools/llm-bench/test/*.test.mjs
 - 0.6B で、wllama(GGUF の Q4_K_M)は transformers.js(ONNX の q4)より、速く(約 5 倍)、小さく(397 MB 対 928 MB)、読み込みも短い(13.9 秒対 46.0 秒)。ただし量子化の方式が違い、同じ条件の比較ではない。
 - 提案した判断の基準(有効な出力 12/14 以上)を通るのは #1 だけだが、#1 の出力は繰り返しが多く、内容が崩れたものもある。**有効な出力の数は、候補の質の基準として弱い。**
 - 3 つの構成とも、暴言を穏当にする目的を安定して満たしているとは言えない。0.6B と 1.7B の差は、1.7B の方が文として整う例があるが、原文の繰り返しと攻撃語の残りは 1.7B でも出る。
+- transformers.js の WASM は、端末 A では 0.6B(#1)しか動かなかった。1.7B(#2)は大きさで、LFM3(#3)は演算の未実装で、読み込みに失敗した。wllama(GGUF)は 1.7B(#5)が動いた。大きいモデルを評価に加える場合、WASM では wllama の方が現実的にみえるが、WebGPU の結果を見るまで確かなことは言えない。
+- LFM3 は、2 つの経路(transformers.js の ONNX、wllama の GGUF)のどちらでも、WASM では動いていない。モデルの品質は未評価である。失敗の理由はどちらもランタイム側(未実装の演算、ネイティブの失敗)で、モデルの能力を示さない。
 - 形式の失敗(オブジェクトや末尾のカンマ)は、モデルの能力よりも、出力の指定の仕方で減らせる可能性がある。wllama の型定義には、JSON スキーマで出力を制約する指定(`response_format`)がある。効くかは試していない。
 
 出力そのもの(14 件 × 構成)は、結果の表とは別に、このリポジトリの外か、Issue のコメントに貼る。
@@ -250,8 +254,8 @@ node --test tools/llm-bench/test/*.test.mjs
 - WebGPU の経路。端末 A はアダプターがあるが、計測していない。ここまでの数値はすべて WASM である。
 - マルチスレッドの WASM(`--isolation require-corp`)。
 - スマートフォン。
-- #2(`onnx-community/Qwen3-1.7B-ONNX`)と #3(`onnx-community/LFM3-1.7B-ONNX`)の取得先と、実行できなかった原因。
-- #6 の失敗の原因の確定と、生のプロンプト(`prompt_format=chatml`)で動くか。LFM3 本来のプロンプト形式。
+- #2 と #3 を WebGPU で動かせるか。#3 を別の量子化(`dtype=q8`)で WASM で動かせるか。#2 のダウンロード量。
+- #6 の失敗の原因。2 つの経路とも失敗した。ネイティブのログ(DevTools のコンソール)が手がかり。LFM3 本来のプロンプト形式。
 - 候補の質の採点(穏当さ、意味、自然さ、違い)。メモリの実測。2 回目の読み込み時間。
 - LFM3 のライセンスの条件。日本語への対応は、一次情報では確認できず、人間の確認(2026-11-04)による。
 - MediaPipe の LLM Inference の文書(`ai.google.dev`)に到達できない。
