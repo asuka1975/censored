@@ -50,7 +50,14 @@ async function memorySnapshot() {
 // WHY NOT: stack だけを残さない。wasm の abort は message が空で、stack だけでは何が起きたか読めなかった。
 const describeError = (e) => `${[e?.name, e?.message].filter(Boolean).join(': ')}\n${e?.stack ?? String(e)}`.trim();
 
-const storageUsage = async () => (navigator.storage?.estimate ? (await navigator.storage.estimate()).usage ?? null : null);
+// iPhone の Safari では、保存の失敗が原因の候補になる。使用量と上限(quota)を残す。
+const storageEstimate = async () => {
+  try {
+    return navigator.storage?.estimate ? await navigator.storage.estimate() : null;
+  } catch {
+    return null;
+  }
+};
 
 function renderConfig(config) {
   $('config').innerHTML = '';
@@ -128,7 +135,8 @@ async function runBench(config) {
   const progress = $('progress');
   progress.hidden = false;
   const bytes = { loaded: 0, total: 0 };
-  const storageBefore = await storageUsage();
+  const estimateBefore = await storageEstimate();
+  const storageBefore = estimateBefore?.usage ?? null;
   setStatus('モデルを読み込んでいる…');
   const loadStart = performance.now();
   let load = { error: null };
@@ -144,9 +152,10 @@ async function runBench(config) {
   }
   const loadMs = performance.now() - loadStart;
   progress.hidden = true;
-  const storageAfter = await storageUsage();
+  const storageAfter = (await storageEstimate())?.usage ?? null;
   load = { ...load, cache: config.cache, loadSeconds: loadMs / 1000, downloadedBytes: bytes.loaded, totalBytes: bytes.total,
-    storageDeltaBytes: storageBefore === null || storageAfter === null ? null : storageAfter - storageBefore };
+    storageDeltaBytes: storageBefore === null || storageAfter === null ? null : storageAfter - storageBefore,
+    storageQuotaBytes: estimateBefore?.quota ?? null };
   const memory = { afterLoad: await memorySnapshot() };
 
   let aborted = null;

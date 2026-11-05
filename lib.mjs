@@ -72,6 +72,7 @@ export function parseConfig(search, topicIds) {
   };
   const noThinkParam = flag('no_think');
   const jinjaParam = flag('jinja');
+  const useCacheParam = flag('use_cache');
   const chatTemplate = q.get('chat_template');
   if (chatTemplate === '') errors.push('chat_template が空');
   const promptFormat = q.get('prompt_format') ?? 'chat';
@@ -99,6 +100,7 @@ export function parseConfig(search, topicIds) {
       topK,
       threads,
       jinja: jinjaParam === null ? undefined : Boolean(Number(jinjaParam)),
+      useCache: useCacheParam === null ? undefined : Boolean(Number(useCacheParam)),
       chatTemplate: chatTemplate ?? undefined,
       promptFormat,
       noThink: noThinkParam === null ? preset.noThink : Boolean(Number(noThinkParam)),
